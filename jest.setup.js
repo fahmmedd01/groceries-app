@@ -1,0 +1,22 @@
+// Learn more: https://github.com/testing-library/jest-dom
+import '@testing-library/jest-dom';
+
+// Mock Web Speech API
+global.SpeechRecognition = jest.fn();
+global.webkitSpeechRecognition = jest.fn();
+
+// Mock window.matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
