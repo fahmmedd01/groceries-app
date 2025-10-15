@@ -8,6 +8,25 @@ export default async function ResultsPage({
   params: Promise<{ listId: string }>;
 }) {
   const { listId } = await params;
+  
+  // Handle temporary IDs (when database is not available)
+  if (listId.startsWith('temp-')) {
+    // Return a temporary list without database
+    return (
+      <ResultsClient
+        list={{
+          id: listId,
+          user_id: null,
+          title: 'Grocery List (Not Saved)',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          zip_code: 'N/A',
+        }}
+        items={[]}
+      />
+    );
+  }
+  
   const supabase = await createClient();
 
   // Fetch the grocery list
