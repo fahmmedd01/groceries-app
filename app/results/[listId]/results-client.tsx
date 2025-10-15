@@ -1,225 +1,106 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { ArrowLeft, ExternalLink, TrendingDown, CheckCircle2 } from 'lucide-react';
-import { ListItem, Retailer, GroceryList, GroceryItem, RetailerProduct } from '@/lib/types';
-import { formatPrice } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { AuthButton } from '@/components/AuthButton';
+import { ArrowLeft, CheckCircle2, ShoppingCart, Edit2, Trash2, LayoutDashboard } from 'lucide-react';
+import { ListItem, GroceryList } from '@/lib/types';
 import { cn } from '@/lib/utils';
+
 interface ResultsClientProps {
   list: GroceryList;
   items: ListItem[];
 }
 
-// Generate AI products on the client side for temporary lists
-async function generateProductsForItem(item: GroceryItem, selectedRetailers: Retailer[]): Promise<RetailerProduct[]> {
-  const retailers = selectedRetailers;
-  
-  // Simple fallback generation (AI generation happens on server)
-  return retailers.map((retailer, index) => ({
-    retailer,
-    title: `${item.name.charAt(0).toUpperCase() + item.name.slice(1)} - ${item.brand || 'Store Brand'}`,
-    brand: item.brand || 'Store Brand',
-    size: item.size || 'Standard Size',
-    price: 4.99 + (index * 0.75) + (Math.random() * 2),
-    stockStatus: Math.random() > 0.8 ? 'low-stock' : 'in-stock' as any,
-    productUrl: `https://${retailer}.com/search?q=${encodeURIComponent(item.name)}`,
-    imageUrl: `https://via.placeholder.com/300/E8F0D5/2D2D2D?text=${encodeURIComponent(item.name.substring(0, 20))}`,
-  }));
-}
-
 export function ResultsClient({ list, items: initialItems }: ResultsClientProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<string>('best-price');
   const [items, setItems] = useState<ListItem[]>(initialItems);
-  const [loading, setLoading] = useState(false);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   const [showPurchased, setShowPurchased] = useState(false);
-  
-  // Extract unique retailers from initial items' matches (for database-loaded lists)
-  const initialRetailers = useMemo(() => {
-    if (initialItems.length > 0) {
-      const retailersSet = new Set<Retailer>();
-      initialItems.forEach(item => {
-        item.matches?.forEach(match => {
-          retailersSet.add(match.retailer);
-        });
-      });
-      return Array.from(retailersSet);
-    }
-    return ['walmart', 'walgreens', 'marianos', 'costco', 'samsclub'] as Retailer[];
-  }, [initialItems]);
-  
-  const [selectedRetailers, setSelectedRetailers] = useState<Retailer[]>(initialRetailers);
-
-  // Load items from sessionStorage for temp lists
-  useEffect(() => {
-    if (list.id.startsWith('temp-') && initialItems.length === 0) {
-      const storedData = sessionStorage.getItem(`list-${list.id}`);
-      if (storedData) {
-        setLoading(true);
-        try {
-          const { items: groceryItems, zipCode, retailers } = JSON.parse(storedData);
-          
-          // Update selected retailers from stored data
-          if (retailers && Array.isArray(retailers)) {
-            setSelectedRetailers(retailers as Retailer[]);
-          }
-          
-          // Generate products for each item
-          Promise.all(
-            groceryItems.map(async (item: GroceryItem, index: number) => {
-              const matches = await generateProductsForItem(item, retailers as Retailer[] || selectedRetailers);
-              return {
-                id: `temp-item-${index}`,
-                list_id: list.id,
-                name: item.name,
-                brand: item.brand || null,
-                quantity: item.quantity,
-                size: item.size || null,
-                notes: item.notes?.join(', ') || null,
-                order_index: index,
-                matches: matches,
-              };
-            })
-          ).then(matchedItems => {
-            setItems(matchedItems);
-            list.zip_code = zipCode;
-            setLoading(false);
-          });
-        } catch (error) {
-          console.error('Error loading temp list data:', error);
-          setLoading(false);
-        }
-      }
-    }
-  }, [list.id, initialItems, list]);
-
-  // Toggle purchased status
-  const togglePurchased = async (itemId: string, purchased: boolean, retailer?: string) => {
-    setUpdatingItemId(itemId);
-
-    try {
-      // For temp lists, update in sessionStorage
-      if (list.id.startsWith('temp-')) {
-        const updatedItems = items.map(item =>
-          item.id === itemId
-            ? {
-                ...item,
-                purchased,
-                purchased_retailer: purchased && retailer ? retailer : null,
-                purchased_at: purchased ? new Date().toISOString() : null,
-              }
-            : item
-        );
-        setItems(updatedItems);
-
-        // Update sessionStorage
-        const storedData = sessionStorage.getItem(`list-${list.id}`);
-        if (storedData) {
-          const data = JSON.parse(storedData);
-          sessionStorage.setItem(`list-${list.id}`, JSON.stringify({
-            ...data,
-            purchasedItems: updatedItems.filter(i => i.purchased).map(i => ({
-              id: i.id,
-              purchased: i.purchased,
-              purchased_retailer: i.purchased_retailer,
-              purchased_at: i.purchased_at,
-            })),
-          }));
-        }
-      } else {
-        // For database lists, call API
-        const response = await fetch(`/api/items/${itemId}/toggle-purchased`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ purchased, retailer }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to update purchased status');
-        }
-
-        // Update local state
-        const updatedItems = items.map(item =>
-          item.id === itemId
-            ? {
-                ...item,
-                purchased,
-                purchased_retailer: purchased && retailer ? retailer : null,
-                purchased_at: purchased ? new Date().toISOString() : null,
-              }
-            : item
-        );
-        setItems(updatedItems);
-      }
-    } catch (error) {
-      console.error('Error toggling purchased status:', error);
-      // Show error to user (you could add a toast notification here)
-    } finally {
-      setUpdatingItemId(null);
-    }
-  };
-
-  // Filter items based on purchased status
-  const displayItems = useMemo(() => {
-    return showPurchased ? items : items.filter(item => !item.purchased);
-  }, [items, showPurchased]);
-
-  // Calculate best prices
-  const bestPriceData = useMemo(() => {
-    return displayItems.map(item => {
-      const matches = item.matches || [];
-      const bestMatch = matches.reduce((best, current) => {
-        if (!best || current.price < best.price) {
-          return current;
-        }
-        return best;
-      }, matches[0]);
-
-      return {
-        item,
-        bestMatch,
-        savings: matches.length > 1
-          ? Math.max(...matches.map(m => m.price)) - (bestMatch?.price || 0)
-          : 0,
-      };
-    });
-  }, [items]);
-
-  // Calculate totals
-  const totalBestPrice = bestPriceData.reduce(
-    (sum, { item, bestMatch }) => sum + (bestMatch?.price || 0) * (item.quantity || 1),
-    0
-  );
+  const [editingItem, setEditingItem] = useState<string | null>(null);
 
   // Calculate purchase progress
   const purchasedCount = items.filter(item => item.purchased).length;
   const totalCount = items.length;
   const purchaseProgress = totalCount > 0 ? Math.round((purchasedCount / totalCount) * 100) : 0;
 
-  // Filter items by retailer
-  const getItemsByRetailer = (retailer: Retailer) => {
-    return displayItems
-      .map(item => ({
-        item,
-        match: item.matches?.find(m => m.retailer === retailer),
-      }))
-      .filter(({ match }) => match !== undefined);
+  // Filter items based on purchased status
+  const displayItems = showPurchased ? items : items.filter(item => !item.purchased);
+
+  // Group items by retailer
+  const itemsByRetailer = displayItems.reduce((acc, item) => {
+    const retailer = item.retailer || 'other';
+    if (!acc[retailer]) {
+      acc[retailer] = [];
+    }
+    acc[retailer].push(item);
+    return acc;
+  }, {} as Record<string, ListItem[]>);
+
+  const togglePurchased = async (itemId: string, purchased: boolean, retailer?: string) => {
+    setUpdatingItemId(itemId);
+
+    try {
+      const response = await fetch(`/api/items/${itemId}/toggle-purchased`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purchased, retailer }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update purchased status');
+      }
+
+      // Update local state
+      const updatedItems = items.map(item =>
+        item.id === itemId
+          ? {
+              ...item,
+              purchased,
+              purchased_retailer: purchased && retailer ? retailer : null,
+              purchased_at: purchased ? new Date().toISOString() : null,
+            }
+          : item
+      );
+      setItems(updatedItems);
+    } catch (error) {
+      console.error('Error toggling purchased status:', error);
+    } finally {
+      setUpdatingItemId(null);
+    }
   };
 
-  // Use selected retailers from state (loaded from sessionStorage or database)
-  const retailers = selectedRetailers;
-  const retailerNames = {
+  const deleteItem = async (itemId: string) => {
+    if (!confirm('Are you sure you want to delete this item?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/items/${itemId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete item');
+      }
+
+      setItems(items.filter(item => item.id !== itemId));
+    } catch (error) {
+      console.error('Error deleting item:', error);
+    }
+  };
+
+  const retailerNames: Record<string, string> = {
     walmart: 'Walmart',
     walgreens: 'Walgreens',
     marianos: "Mariano's",
     costco: 'Costco',
     samsclub: "Sam's Club",
+    other: 'Other',
   };
 
   return (
@@ -228,17 +109,30 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
       <header className="safe-top border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/')}
-              className="gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <h1 className="text-xl font-bold truncate">{list.title}</h1>
-            <div className="w-20" /> {/* Spacer for alignment */}
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/')}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Back</span>
+              </Button>
+              <h1 className="text-xl font-bold truncate">{list.title}</h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push('/dashboard')}
+                className="gap-2"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </Button>
+              <AuthButton />
+            </div>
           </div>
         </div>
       </header>
@@ -263,7 +157,7 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
                 )}
               </div>
               <p className="text-muted-foreground mb-3">
-                {displayItems.length} items shown • {items.length} total • ZIP Code: {list.zip_code}
+                {displayItems.length} items shown • {items.length} total
               </p>
               {/* Purchase Progress */}
               <div className="space-y-2">
@@ -281,84 +175,54 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
                 </div>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground mb-1">
-                Estimated Best Price Total
-              </p>
-              <p className="text-3xl font-bold text-primary-lime">
-                {formatPrice(totalBestPrice)}
-              </p>
-            </div>
           </div>
         </Card>
 
-        {/* Retailer Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="overflow-x-auto pb-2">
-            <TabsList className="inline-flex w-auto">
-              <TabsTrigger value="best-price" className="gap-2">
-                <TrendingDown className="h-4 w-4" />
-                Best Price
-              </TabsTrigger>
-              {retailers.map(retailer => {
-                const retailerItems = getItemsByRetailer(retailer);
-                return (
-                  <TabsTrigger key={retailer} value={retailer}>
-                    {retailerNames[retailer]}
-                    <Badge variant="secondary" className="ml-2">
-                      {retailerItems.length}
-                    </Badge>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </div>
-
-          {/* Best Price Tab */}
-          <TabsContent value="best-price">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {bestPriceData.map(({ item, bestMatch, savings }) => (
-                <ProductCard
-                  key={item.id}
-                  item={item}
-                  product={bestMatch}
-                  isBestPrice
-                  savings={savings}
-                  onTogglePurchased={togglePurchased}
-                  isUpdating={updatingItemId === item.id}
-                />
-              ))}
+        {/* Items Grouped by Retailer */}
+        <div className="space-y-8">
+          {Object.entries(itemsByRetailer).map(([retailer, retailerItems]) => (
+            <div key={retailer}>
+              <div className="flex items-center gap-3 mb-4">
+                <ShoppingCart className="h-5 w-5 text-primary-lime" />
+                <h3 className="text-xl font-bold">
+                  {retailerNames[retailer] || retailer}
+                </h3>
+                <Badge variant="secondary">{retailerItems.length}</Badge>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {retailerItems.map((item) => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    onTogglePurchased={togglePurchased}
+                    onDelete={deleteItem}
+                    isUpdating={updatingItemId === item.id}
+                    isEditing={editingItem === item.id}
+                    setEditing={setEditingItem}
+                  />
+                ))}
+              </div>
             </div>
-          </TabsContent>
+          ))}
 
-          {/* Retailer Tabs */}
-          {retailers.map(retailer => {
-            const retailerItems = getItemsByRetailer(retailer);
-            return (
-              <TabsContent key={retailer} value={retailer}>
-                {retailerItems.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {retailerItems.map(({ item, match }) => (
-                      <ProductCard
-                        key={item.id}
-                        item={item}
-                        product={match!}
-                        onTogglePurchased={togglePurchased}
-                        isUpdating={updatingItemId === item.id}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <Card className="p-12 text-center">
-                    <p className="text-muted-foreground">
-                      No items available at {retailerNames[retailer]}
-                    </p>
-                  </Card>
-                )}
-              </TabsContent>
-            );
-          })}
-        </Tabs>
+          {displayItems.length === 0 && (
+            <Card className="p-12 text-center">
+              <p className="text-muted-foreground">
+                {purchasedCount > 0
+                  ? 'All items purchased! 🎉'
+                  : 'No items in your list yet.'}
+              </p>
+              <Button
+                onClick={() => router.push('/')}
+                variant="outline"
+                className="mt-4"
+              >
+                Add Items
+              </Button>
+            </Card>
+          )}
+        </div>
       </main>
 
       {/* Footer Spacer */}
@@ -367,123 +231,68 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
   );
 }
 
-// Product Card Component
-interface ProductCardProps {
+// Item Card Component
+interface ItemCardProps {
   item: ListItem;
-  product: any;
-  isBestPrice?: boolean;
-  savings?: number;
   onTogglePurchased: (itemId: string, purchased: boolean, retailer?: string) => Promise<void>;
+  onDelete: (itemId: string) => Promise<void>;
   isUpdating: boolean;
+  isEditing: boolean;
+  setEditing: (itemId: string | null) => void;
 }
 
-function ProductCard({ item, product, isBestPrice, savings, onTogglePurchased, isUpdating }: ProductCardProps) {
-  const stockColors = {
-    'in-stock': 'success',
-    'low-stock': 'warning',
-    'out-of-stock': 'destructive',
-  };
-
+function ItemCard({ item, onTogglePurchased, onDelete, isUpdating, isEditing, setEditing }: ItemCardProps) {
   const isPurchased = item.purchased || false;
 
   return (
     <Card className={cn(
-      "overflow-hidden hover:shadow-float transition-all relative",
-      isPurchased && "opacity-60"
+      "p-4 transition-all",
+      isPurchased && "opacity-60 bg-gray-50"
     )}>
-      {/* Purchased Checkbox */}
-      <div className="absolute top-3 left-3 z-10">
-        <label className="flex items-center gap-2 cursor-pointer bg-white/90 backdrop-blur-sm rounded-full px-3 py-2 shadow-sm hover:bg-white transition-all">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start gap-3 flex-1">
           <input
             type="checkbox"
             checked={isPurchased}
-            onChange={(e) => onTogglePurchased(item.id, e.target.checked, product.retailer)}
+            onChange={(e) => onTogglePurchased(item.id, e.target.checked, item.retailer)}
             disabled={isUpdating}
-            className="w-5 h-5 rounded border-gray-300 text-primary-lime focus:ring-primary-lime cursor-pointer"
+            className="mt-1 w-5 h-5 rounded border-gray-300 text-primary-lime focus:ring-primary-lime cursor-pointer"
           />
-          <span className="text-sm font-medium">
-            {isPurchased ? 'Purchased' : 'Mark as Purchased'}
-          </span>
-        </label>
-      </div>
-
-      {/* Product Image */}
-      <div className={cn(
-        "relative h-48 bg-gradient-to-br from-primary-lime-bg to-secondary-lavender-bg flex items-center justify-center",
-        isPurchased && "grayscale"
-      )}>
-        <div className="text-center px-4">
-          <div className="text-6xl mb-2">🛒</div>
-          <p className="text-sm font-medium text-muted-foreground">{item.name}</p>
-        </div>
-        {isBestPrice && savings && savings > 0 && !isPurchased && (
-          <div className="absolute top-2 right-2">
-            <Badge variant="success" className="gap-1">
-              <TrendingDown className="h-3 w-3" />
-              Save {formatPrice(savings)}
-            </Badge>
-          </div>
-        )}
-        {isPurchased && (
-          <div className="absolute top-2 right-2">
-            <Badge variant="default" className="gap-1 bg-green-600">
-              <CheckCircle2 className="h-3 w-3" />
-              Purchased
-            </Badge>
-          </div>
-        )}
-      </div>
-
-      {/* Product Info */}
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-2">
-          <h3 className={cn(
-            "font-semibold line-clamp-2 text-sm flex-1",
-            isPurchased && "line-through"
-          )}>
-            {product.title}
-          </h3>
-        </div>
-
-        <div className="space-y-2 text-sm text-muted-foreground mb-4">
-          <p>Brand: {product.brand}</p>
-          <p>Size: {product.size}</p>
-          <p>
-            Requested: {item.quantity} item{item.quantity > 1 ? 's' : ''}
-          </p>
-          {item.notes && <p className="text-xs italic">Note: {item.notes}</p>}
-        </div>
-
-        {/* Price and Stock */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-2xl font-bold text-primary-lime">
-              {formatPrice(product.price)}
-            </p>
-            {item.quantity > 1 && (
-              <p className="text-xs text-muted-foreground">
-                Total: {formatPrice(product.price * item.quantity)}
+          <div className="flex-1">
+            <h4 className={cn(
+              "font-semibold text-lg",
+              isPurchased && "line-through text-muted-foreground"
+            )}>
+              {item.name}
+            </h4>
+            <div className="text-sm text-muted-foreground space-y-1 mt-1">
+              {item.brand && <p>Brand: {item.brand}</p>}
+              {item.size && <p>Size: {item.size}</p>}
+              <p className="font-medium text-primary-lime">
+                Quantity: {item.quantity}
               </p>
-            )}
+              {item.notes && <p className="italic">Note: {item.notes}</p>}
+            </div>
           </div>
-          <Badge variant={stockColors[product.stockStatus as keyof typeof stockColors] as any}>
-            {product.stockStatus.replace('-', ' ')}
-          </Badge>
         </div>
-
-        {/* Actions */}
-        <Button
-          asChild
-          variant="outline"
-          className="w-full gap-2"
-        >
-          <a href={product.productUrl} target="_blank" rel="noopener noreferrer">
-            <ExternalLink className="h-4 w-4" />
-            Open in Store
-          </a>
-        </Button>
+        
+        {!isPurchased && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(item.id)}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
+
+      {isPurchased && item.purchased_at && (
+        <p className="text-xs text-muted-foreground mt-2">
+          Purchased {new Date(item.purchased_at).toLocaleDateString()}
+        </p>
+      )}
     </Card>
   );
 }
-

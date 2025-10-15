@@ -1,81 +1,46 @@
 'use client';
 
-import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/contexts/UserContext';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LogIn, LogOut, User } from 'lucide-react';
 
-interface AuthButtonProps {
-  user?: {
-    id: string;
-    email?: string;
-    user_metadata?: {
-      avatar_url?: string;
-      full_name?: string;
-    };
-  } | null;
-}
-
-export function AuthButton({ user }: AuthButtonProps) {
+export function AuthButton() {
   const router = useRouter();
-  const supabase = createClient();
-  const [isLoading, setIsLoading] = useState(false);
+  const { user, signOut } = useUser();
 
-  const handleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (error) {
-        console.error('Error signing in:', error);
-        alert('Failed to sign in. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSignIn = () => {
+    router.push('/login');
   };
 
-  const handleSignOut = async () => {
-    setIsLoading(true);
-    try {
-      await supabase.auth.signOut();
-      router.refresh();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSignOut = () => {
+    signOut();
+    router.push('/');
   };
 
   if (user) {
     return (
       <div className="flex items-center gap-3">
         <Avatar className="h-10 w-10">
-          <AvatarImage src={user.user_metadata?.avatar_url} />
           <AvatarFallback>
-            {user.user_metadata?.full_name?.[0]?.toUpperCase() || 
+            {user.full_name?.[0]?.toUpperCase() || 
              user.email?.[0]?.toUpperCase() || 
              <User className="h-5 w-5" />}
           </AvatarFallback>
         </Avatar>
+        <div className="hidden sm:block">
+          <p className="text-sm font-medium">{user.full_name}</p>
+          <p className="text-xs text-muted-foreground">{user.email}</p>
+        </div>
         <Button
           onClick={handleSignOut}
           variant="ghost"
           size="sm"
-          disabled={isLoading}
           className="gap-2"
         >
           <LogOut className="h-4 w-4" />
-          Sign Out
+          <span className="hidden sm:inline">Sign Out</span>
         </Button>
       </div>
     );
@@ -86,11 +51,10 @@ export function AuthButton({ user }: AuthButtonProps) {
       onClick={handleSignIn}
       variant="default"
       size="sm"
-      disabled={isLoading}
       className="gap-2"
     >
       <LogIn className="h-4 w-4" />
-      {isLoading ? 'Signing in...' : 'Sign In'}
+      Sign In
     </Button>
   );
 }

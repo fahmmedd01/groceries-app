@@ -20,7 +20,6 @@ export default async function ResultsPage({
           title: 'Grocery List (Not Saved)',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          zip_code: 'N/A',
         }}
         items={[]}
       />
@@ -40,13 +39,10 @@ export default async function ResultsPage({
     notFound();
   }
 
-  // Fetch list items with their retailer matches
+  // Fetch list items
   const { data: items, error: itemsError } = await supabase
     .from('list_items')
-    .select(`
-      *,
-      retailer_matches (*)
-    `)
+    .select('*')
     .eq('list_id', listId)
     .order('order_index');
 
@@ -64,20 +60,11 @@ export default async function ResultsPage({
     quantity: item.quantity,
     size: item.size,
     notes: item.notes,
+    retailer: item.retailer,
     order_index: item.order_index,
     purchased: item.purchased || false,
     purchased_retailer: item.purchased_retailer || null,
     purchased_at: item.purchased_at || null,
-    matches: item.retailer_matches?.map((match: any) => ({
-      retailer: match.retailer,
-      title: match.title,
-      brand: match.brand,
-      size: match.size,
-      price: parseFloat(match.price),
-      stockStatus: match.stock_status,
-      productUrl: match.product_url,
-      imageUrl: match.image_url,
-    })) || [],
   })) || [];
 
   return (

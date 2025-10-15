@@ -2,70 +2,54 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/contexts/UserContext';
 import { VoiceInput } from '@/components/VoiceInput';
 import { TextInput } from '@/components/TextInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Mic, Type, ShoppingCart, Loader2, Package } from 'lucide-react';
+import { AuthButton } from '@/components/AuthButton';
+import { Mic, Type, ShoppingCart, Loader2, LayoutDashboard, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { GroceryList, ListItem } from '@/lib/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function HomePage() {
   const router = useRouter();
+  const { user } = useUser();
   const [inputMode, setInputMode] = useState<'voice' | 'text'>('voice');
   const [inputText, setInputText] = useState('');
-  const [zipCode, setZipCode] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedRetailers, setSelectedRetailers] = useState<string[]>([]);
-  const [activeList, setActiveList] = useState<GroceryList | null>(null);
-  const [existingItems, setExistingItems] = useState<ListItem[]>([]);
-  const [loadingList, setLoadingList] = useState(true);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [selectedRetailer, setSelectedRetailer] = useState<string>('');
+  const [customRetailer, setCustomRetailer] = useState('');
 
-  // Load active list on mount
-  useEffect(() => {
-    async function loadActiveList() {
-      try {
-        const response = await fetch('/api/lists/active');
-        if (response.ok) {
-          const { list } = await response.json();
-          if (list) {
-            setActiveList(list);
-            setZipCode(list.zip_code || '');
-            // Filter unpurchased items
-            const unpurchasedItems = (list.items || []).filter((item: ListItem) => !item.purchased);
-            setExistingItems(unpurchasedItems);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading active list:', error);
-      } finally {
-        setLoadingList(false);
-      }
-    }
-    loadActiveList();
-  }, []);
-
-  const handleBuildList = async () => {
+  const handleAddItems = async () => {
     if (!inputText.trim()) {
       setError('Please add some grocery items first.');
       return;
     }
 
-    if (!zipCode.trim()) {
-      setError('Please enter your ZIP code for location-based results.');
+    if (!selectedRetailer) {
+      setError('Please select a retailer.');
       return;
     }
 
-    if (selectedRetailers.length === 0) {
-      setError('Please select at least one retailer to compare prices.');
+    if (selectedRetailer === 'other' && !customRetailer.trim()) {
+      setError('Please enter a retailer name.');
       return;
     }
 
     setIsProcessing(true);
     setError(null);
+    setSuccess(null);
 
     try {
       // Parse the grocery input using Claude AI
@@ -81,35 +65,36 @@ export default function HomePage() {
 
       const { items } = await parseResponse.json();
 
-      // Match products from retailers
-      const matchResponse = await fetch('/api/match-products', {
+      // Add items to active list
+      const addResponse = await fetch('/api/items/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, zipCode, retailers: selectedRetailers }),
+        body: JSON.stringify({
+          items,
+          userId: user?.id,
+          retailer: selectedRetailer,
+          customRetailer: customRetailer,
+        }),
       });
 
-      if (!matchResponse.ok) {
-        throw new Error('Failed to match products');
+      if (!addResponse.ok) {
+        throw new Error('Failed to add items');
       }
 
-      const { listId } = await matchResponse.json();
+      const { listId, itemCount } = await addResponse.json();
 
-      // Store the parsed items and matches in sessionStorage for temp lists
-      if (listId.startsWith('temp-')) {
-        sessionStorage.setItem(`list-${listId}`, JSON.stringify({
-          items: items,
-          zipCode: zipCode,
-          retailers: selectedRetailers,
-          createdAt: new Date().toISOString(),
-        }));
-      }
-
-      // Clear input and navigate to results page
+      // Clear input and show success
       setInputText('');
-      router.push(`/results/${listId}`);
+      setSuccess(`Added ${itemCount} item${itemCount !== 1 ? 's' : ''} to your list!`);
+      
+      // Auto-redirect to list after 2 seconds
+      setTimeout(() => {
+        router.push(`/results/${listId}`);
+      }, 2000);
     } catch (err) {
-      console.error('Error building list:', err);
-      setError('Failed to build your grocery list. Please try again.');
+      console.error('Error adding items:', err);
+      setError('Failed to add items. Please try again.');
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -118,10 +103,37 @@ export default function HomePage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="safe-top border-b bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <ShoppingCart className="h-8 w-8 text-primary-lime" />
-            <h1 className="text-2xl font-bold">Voice Grocery Assistant</h1>
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ShoppingCart className="h-8 w-8 text-primary-lime" />
+              <h1 className="text-2xl font-bold">Grocery List</h1>
+            </div>
+            <div className="flex items-center gap-4">
+              {user && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push('/dashboard')}
+                    className="gap-2"
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span className="hidden sm:inline">Dashboard</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push('/stores')}
+                    className="gap-2"
+                  >
+                    <Store className="h-4 w-4" />
+                    <span className="hidden sm:inline">Stores</span>
+                  </Button>
+                </>
+              )}
+              <AuthButton />
+            </div>
           </div>
         </div>
       </header>
@@ -131,50 +143,12 @@ export default function HomePage() {
         {/* Welcome Section */}
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold mb-4">
-            Build Your Grocery List
+            Add Items to Your List
           </h2>
           <p className="text-lg text-muted-foreground">
-            Use voice or text to create your shopping list and compare prices across stores
+            Use voice or text to add items to your grocery list
           </p>
         </div>
-
-        {/* Existing Items Summary */}
-        {!loadingList && existingItems.length > 0 && (
-          <Card className="mb-8 p-6 bg-primary-lime-bg border-2 border-primary-lime">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <Package className="h-6 w-6 text-primary-lime" />
-                <div>
-                  <h3 className="text-lg font-bold">Your Active Shopping List</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {existingItems.length} item{existingItems.length !== 1 ? 's' : ''} waiting to be purchased
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => activeList && router.push(`/results/${activeList.id}`)}
-                className="gap-2"
-              >
-                <ShoppingCart className="h-4 w-4" />
-                View List
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {existingItems.slice(0, 10).map((item, index) => (
-                <Badge key={index} variant="secondary" className="text-sm">
-                  {item.quantity}x {item.name}
-                </Badge>
-              ))}
-              {existingItems.length > 10 && (
-                <Badge variant="secondary" className="text-sm">
-                  +{existingItems.length - 10} more
-                </Badge>
-              )}
-            </div>
-          </Card>
-        )}
 
         {/* Input Mode Toggle */}
         <div className="flex justify-center mb-8">
@@ -206,8 +180,9 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Input Area Card */}
-        <Card className="p-8 mb-8">
+        {/* Input Card */}
+        <Card className="p-6 mb-6">
+          {/* Voice or Text Input */}
           {inputMode === 'voice' ? (
             <VoiceInput
               onTranscriptChange={setInputText}
@@ -215,72 +190,46 @@ export default function HomePage() {
             />
           ) : (
             <TextInput
+              value={inputText}
               onTextChange={setInputText}
               className="mb-6"
             />
           )}
 
-          {/* ZIP Code Input */}
-          <div className="mt-6">
-            <label htmlFor="zipCode" className="block text-sm font-medium mb-2">
-              Your ZIP Code
-            </label>
-            <Input
-              id="zipCode"
-              type="text"
-              placeholder="Enter ZIP code (e.g., 60601)"
-              value={zipCode}
-              onChange={(e) => setZipCode(e.target.value)}
-              maxLength={10}
-              className="max-w-xs"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              We'll use this to check availability and prices in your area
-            </p>
-          </div>
-
           {/* Retailer Selection */}
           <div className="mt-6">
             <label className="block text-sm font-medium mb-3">
-              Select Retailers to Compare
+              Select Retailer
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {[
-                { id: 'walmart', name: 'Walmart', color: 'bg-primary-lime-bg' },
-                { id: 'walgreens', name: 'Walgreens', color: 'bg-red-50' },
-                { id: 'marianos', name: "Mariano's", color: 'bg-secondary-lavender-bg' },
-                { id: 'costco', name: 'Costco', color: 'bg-blue-50' },
-                { id: 'samsclub', name: "Sam's Club", color: 'bg-accent-peach/30' },
-              ].map((retailer) => (
-                <label
-                  key={retailer.id}
-                  className={cn(
-                    'flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all',
-                    selectedRetailers.includes(retailer.id)
-                      ? 'border-primary-lime bg-primary-lime-bg shadow-md'
-                      : 'border-gray-200 hover:border-gray-300',
-                    retailer.color
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedRetailers.includes(retailer.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedRetailers([...selectedRetailers, retailer.id]);
-                      } else {
-                        setSelectedRetailers(selectedRetailers.filter(r => r !== retailer.id));
-                      }
-                    }}
-                    className="w-5 h-5 rounded border-gray-300 text-primary-lime focus:ring-primary-lime"
-                  />
-                  <span className="font-medium">{retailer.name}</span>
+            <Select value={selectedRetailer} onValueChange={setSelectedRetailer}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Choose a retailer..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="walmart">Walmart</SelectItem>
+                <SelectItem value="walgreens">Walgreens</SelectItem>
+                <SelectItem value="marianos">Mariano&apos;s</SelectItem>
+                <SelectItem value="costco">Costco</SelectItem>
+                <SelectItem value="samsclub">Sam&apos;s Club</SelectItem>
+                <SelectItem value="other">Other (Custom)</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Custom Retailer Input */}
+            {selectedRetailer === 'other' && (
+              <div className="mt-4">
+                <label htmlFor="customRetailer" className="block text-sm font-medium mb-2">
+                  Retailer Name
                 </label>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Select one or more retailers to compare prices (selecting all gives you the best comparison)
-            </p>
+                <Input
+                  id="customRetailer"
+                  type="text"
+                  placeholder="Enter retailer name..."
+                  value={customRetailer}
+                  onChange={(e) => setCustomRetailer(e.target.value)}
+                />
+              </div>
+            )}
           </div>
         </Card>
 
@@ -291,71 +240,44 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Build List Button */}
-        <div className="flex justify-center">
-          <Button
-            onClick={handleBuildList}
-            disabled={isProcessing || !inputText.trim() || !zipCode.trim()}
-            size="lg"
-            className="px-12"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                Building List...
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                Build My List
-              </>
-            )}
-          </Button>
-        </div>
+        {/* Success Message */}
+        {success && (
+          <div className="mb-6 rounded-2xl bg-green-50 border-2 border-green-200 p-4">
+            <p className="text-sm text-green-700">{success}</p>
+          </div>
+        )}
 
-        {/* Feature Highlights */}
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="p-6 bg-primary-lime-bg border-0">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary-lime text-white mb-4">
-                <Mic className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold mb-2">Voice Powered</h3>
-              <p className="text-sm text-muted-foreground">
-                Simply speak your grocery list naturally
-              </p>
-            </div>
-          </Card>
+        {/* Add Items Button */}
+        <Button
+          onClick={handleAddItems}
+          disabled={isProcessing || !inputText.trim() || !selectedRetailer}
+          className="w-full gap-3"
+          size="lg"
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Adding Items...
+            </>
+          ) : (
+            <>
+              <ShoppingCart className="h-5 w-5" />
+              Add Items to List
+            </>
+          )}
+        </Button>
 
-          <Card className="p-6 bg-secondary-lavender-bg border-0">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-secondary-lavender text-white mb-4">
-                <ShoppingCart className="h-6 w-6" />
-              </div>
-              <h3 className="font-semibold mb-2">5 Retailers</h3>
-              <p className="text-sm text-muted-foreground">
-                Compare prices from major stores instantly
-              </p>
-            </div>
-          </Card>
-
-          <Card className="p-6 bg-accent-peach/30 border-0">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-accent-coral text-white mb-4">
-                <span className="text-xl font-bold">$</span>
-              </div>
-              <h3 className="font-semibold mb-2">Best Prices</h3>
-              <p className="text-sm text-muted-foreground">
-                Find the best deals automatically
-              </p>
-            </div>
-          </Card>
+        {/* Helpful Tips */}
+        <div className="mt-8 p-6 bg-primary-lime-bg rounded-2xl">
+          <h3 className="font-semibold mb-2">Tips for Best Results:</h3>
+          <ul className="text-sm text-muted-foreground space-y-1">
+            <li>• Say or type items naturally: &quot;2 cartons of eggs and 1 gallon of milk&quot;</li>
+            <li>• Include quantities and sizes for better organization</li>
+            <li>• Mention brands if you have a preference</li>
+            <li>• Select the store you plan to shop at</li>
+          </ul>
         </div>
       </main>
-
-      {/* Footer Spacer for Mobile Navigation */}
-      <div className="h-24 safe-bottom" />
     </div>
   );
 }
-

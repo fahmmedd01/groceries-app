@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { UserProvider } from "@/contexts/UserContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Voice Grocery Assistant",
-  description: "Build and manage your grocery lists with voice commands",
+  title: "Grocery List Manager",
+  description: "Build and manage your grocery lists with ease",
   viewport: {
     width: "device-width",
     initialScale: 1,
@@ -23,9 +24,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen bg-background">
-          {children}
-        </div>
+        <UserProvider>
+          <div className="min-h-screen bg-background">
+            {children}
+          </div>
+        </UserProvider>
       </body>
     </html>
   );

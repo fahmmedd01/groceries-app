@@ -6,26 +6,25 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams;
+    const userId = searchParams.get('userId');
+
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
     // Get active list for the user (or most recent active list for guests)
     let query = supabase
       .from('grocery_lists')
       .select(`
         *,
-        items:list_items(
-          *,
-          matches:retailer_matches(*)
-        )
+        items:list_items(*)
       `)
       .eq('is_active', true)
       .order('updated_at', { ascending: false })
       .limit(1);
     
     // Add user filter
-    if (user?.id) {
-      query = query.eq('user_id', user.id);
+    if (userId) {
+      query = query.eq('user_id', userId);
     } else {
       query = query.is('user_id', null);
     }
