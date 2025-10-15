@@ -1,24 +1,61 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ArrowLeft, ExternalLink, TrendingDown } from 'lucide-react';
-import { ListItem, Retailer, GroceryList } from '@/lib/types';
+import { ListItem, Retailer, GroceryList, GroceryItem } from '@/lib/types';
 import { formatPrice } from '@/lib/utils';
 import Image from 'next/image';
+import { matchGroceryItem } from '@/lib/matching/productMatcher';
 
 interface ResultsClientProps {
   list: GroceryList;
   items: ListItem[];
 }
 
-export function ResultsClient({ list, items }: ResultsClientProps) {
+export function ResultsClient({ list, items: initialItems }: ResultsClientProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<string>('best-price');
+  const [items, setItems] = useState<ListItem[]>(initialItems);
+
+  // Load items from sessionStorage for temp lists
+  useEffect(() => {
+    if (list.id.startsWith('temp-') && initialItems.length === 0) {
+      const storedData = sessionStorage.getItem(`list-${list.id}`);
+      if (storedData) {
+        try {
+          const { items: groceryItems, zipCode } = JSON.parse(storedData);
+          
+          // Match products for each item
+          const matchedItems: ListItem[] = groceryItems.map((item: GroceryItem, index: number) => {
+            const matches = matchGroceryItem(item);
+            return {
+              id: `temp-item-${index}`,
+              list_id: list.id,
+              name: item.name,
+              brand: item.brand || null,
+              quantity: item.quantity,
+              size: item.size || null,
+              notes: item.notes?.join(', ') || null,
+              order_index: index,
+              matches: matches,
+            };
+          });
+          
+          setItems(matchedItems);
+          
+          // Update list with ZIP code
+          list.zip_code = zipCode;
+        } catch (error) {
+          console.error('Error loading temp list data:', error);
+        }
+      }
+    }
+  }, [list.id, initialItems, list]);
 
   // Calculate best prices
   const bestPriceData = useMemo(() => {

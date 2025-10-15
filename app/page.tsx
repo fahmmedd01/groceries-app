@@ -59,6 +59,15 @@ export default function HomePage() {
 
       const { listId } = await matchResponse.json();
 
+      // Store the parsed items and matches in sessionStorage for temp lists
+      if (listId.startsWith('temp-')) {
+        sessionStorage.setItem(`list-${listId}`, JSON.stringify({
+          items: items,
+          zipCode: zipCode,
+          createdAt: new Date().toISOString(),
+        }));
+      }
+
       // Navigate to results page
       router.push(`/results/${listId}`);
     } catch (err) {
