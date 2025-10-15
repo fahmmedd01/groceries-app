@@ -34,8 +34,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ stores }, { status: 200 });
   } catch (error: any) {
     console.error('Error in stores GET API:', error);
+    console.error('Error details:', {
+      message: error?.message,
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    });
     return NextResponse.json(
-      { error: 'Internal server error', details: error?.message },
+      { 
+        error: 'Internal server error', 
+        details: error?.message,
+        code: error?.code,
+        hint: error?.hint,
+      },
       { status: 500 }
     );
   }
@@ -76,8 +87,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ store: newStore }, { status: 201 });
   } catch (error: any) {
     console.error('Error in stores POST API:', error);
+    console.error('Error details:', {
+      message: error?.message,
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    });
     return NextResponse.json(
-      { error: 'Internal server error', details: error?.message },
+      { 
+        error: 'Internal server error', 
+        details: error?.message,
+        code: error?.code,
+        hint: error?.hint,
+      },
       { status: 500 }
     );
   }

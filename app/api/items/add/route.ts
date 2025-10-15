@@ -132,8 +132,19 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error('Error in add items API:', error);
+    console.error('Error details:', {
+      message: error?.message,
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    });
     return NextResponse.json(
-      { error: 'Failed to add items. Please try again.', details: error?.message },
+      { 
+        error: 'Failed to add items. Please try again.', 
+        details: error?.message,
+        code: error?.code,
+        hint: error?.hint,
+      },
       { status: 500 }
     );
   }
