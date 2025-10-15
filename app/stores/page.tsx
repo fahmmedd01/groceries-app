@@ -81,6 +81,8 @@ export default function StoresPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user?.id,
+          userEmail: user?.email,
+          userName: user?.full_name,
           ...newStore,
         }),
       });

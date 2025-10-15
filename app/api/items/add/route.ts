@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const { items, userId, retailer, customRetailer } = await request.json();
+    const { items, userId, userEmail, userName, retailer, customRetailer } = await request.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -27,6 +27,37 @@ export async function POST(request: NextRequest) {
     const finalRetailer = retailer === 'other' && customRetailer ? customRetailer : retailer;
 
     const supabase = await createClient();
+
+    // If userId is provided, ensure user exists in database
+    if (userId) {
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (!existingUser) {
+        // Create user in database (they signed in via localStorage)
+        const { error: userError } = await supabase
+          .from('users')
+          .insert({
+            id: userId,
+            email: userEmail || `user-${userId}@local`,
+            full_name: userName || 'User',
+          });
+
+        if (userError) {
+          console.error('Error creating user:', userError);
+          console.error('User creation error details:', {
+            message: userError?.message,
+            code: userError?.code,
+            details: userError?.details,
+            hint: userError?.hint,
+          });
+          // Continue anyway - user might exist but we couldn't fetch it
+        }
+      }
+    }
 
     // Get or create active list for this user
     let query = supabase

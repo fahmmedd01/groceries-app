@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, name, retailer, address } = await request.json();
+    const { userId, userEmail, userName, name, retailer, address } = await request.json();
 
     if (!userId || !name || !retailer) {
       return NextResponse.json(
@@ -64,6 +64,28 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient();
+
+    // Ensure user exists in database
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!existingUser) {
+      // Create user in database
+      const { error: userError } = await supabase
+        .from('users')
+        .insert({
+          id: userId,
+          email: userEmail || `user-${userId}@local`,
+          full_name: userName || 'User',
+        });
+
+      if (userError) {
+        console.error('Error creating user:', userError);
+      }
+    }
 
     const { data: newStore, error } = await supabase
       .from('stores')

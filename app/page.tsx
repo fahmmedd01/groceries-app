@@ -72,6 +72,8 @@ export default function HomePage() {
         body: JSON.stringify({
           items,
           userId: user?.id,
+          userEmail: user?.email,
+          userName: user?.full_name,
           retailer: selectedRetailer,
           customRetailer: customRetailer,
         }),
