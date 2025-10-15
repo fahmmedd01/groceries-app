@@ -15,8 +15,8 @@ interface ResultsClientProps {
 }
 
 // Generate AI products on the client side for temporary lists
-async function generateProductsForItem(item: GroceryItem): Promise<RetailerProduct[]> {
-  const retailers: Retailer[] = ['walmart', 'walgreens', 'marianos', 'costco', 'samsclub'];
+async function generateProductsForItem(item: GroceryItem, selectedRetailers: Retailer[]): Promise<RetailerProduct[]> {
+  const retailers = selectedRetailers;
   
   // Simple fallback generation (AI generation happens on server)
   return retailers.map((retailer, index) => ({
@@ -36,6 +36,22 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
   const [activeTab, setActiveTab] = useState<string>('best-price');
   const [items, setItems] = useState<ListItem[]>(initialItems);
   const [loading, setLoading] = useState(false);
+  
+  // Extract unique retailers from initial items' matches (for database-loaded lists)
+  const initialRetailers = useMemo(() => {
+    if (initialItems.length > 0) {
+      const retailersSet = new Set<Retailer>();
+      initialItems.forEach(item => {
+        item.matches?.forEach(match => {
+          retailersSet.add(match.retailer);
+        });
+      });
+      return Array.from(retailersSet);
+    }
+    return ['walmart', 'walgreens', 'marianos', 'costco', 'samsclub'] as Retailer[];
+  }, [initialItems]);
+  
+  const [selectedRetailers, setSelectedRetailers] = useState<Retailer[]>(initialRetailers);
 
   // Load items from sessionStorage for temp lists
   useEffect(() => {
@@ -44,12 +60,17 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
       if (storedData) {
         setLoading(true);
         try {
-          const { items: groceryItems, zipCode } = JSON.parse(storedData);
+          const { items: groceryItems, zipCode, retailers } = JSON.parse(storedData);
+          
+          // Update selected retailers from stored data
+          if (retailers && Array.isArray(retailers)) {
+            setSelectedRetailers(retailers as Retailer[]);
+          }
           
           // Generate products for each item
           Promise.all(
             groceryItems.map(async (item: GroceryItem, index: number) => {
-              const matches = await generateProductsForItem(item);
+              const matches = await generateProductsForItem(item, retailers as Retailer[] || selectedRetailers);
               return {
                 id: `temp-item-${index}`,
                 list_id: list.id,
@@ -112,7 +133,8 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
       .filter(({ match }) => match !== undefined);
   };
 
-  const retailers: Retailer[] = ['walmart', 'walgreens', 'marianos', 'costco', 'samsclub'];
+  // Use selected retailers from state (loaded from sessionStorage or database)
+  const retailers = selectedRetailers;
   const retailerNames = {
     walmart: 'Walmart',
     walgreens: 'Walgreens',

@@ -17,6 +17,7 @@ export default function HomePage() {
   const [zipCode, setZipCode] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRetailers, setSelectedRetailers] = useState<string[]>([]);
 
   const handleBuildList = async () => {
     if (!inputText.trim()) {
@@ -26,6 +27,11 @@ export default function HomePage() {
 
     if (!zipCode.trim()) {
       setError('Please enter your ZIP code for location-based results.');
+      return;
+    }
+
+    if (selectedRetailers.length === 0) {
+      setError('Please select at least one retailer to compare prices.');
       return;
     }
 
@@ -50,7 +56,7 @@ export default function HomePage() {
       const matchResponse = await fetch('/api/match-products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, zipCode }),
+        body: JSON.stringify({ items, zipCode, retailers: selectedRetailers }),
       });
 
       if (!matchResponse.ok) {
@@ -64,6 +70,7 @@ export default function HomePage() {
         sessionStorage.setItem(`list-${listId}`, JSON.stringify({
           items: items,
           zipCode: zipCode,
+          retailers: selectedRetailers,
           createdAt: new Date().toISOString(),
         }));
       }
@@ -161,6 +168,50 @@ export default function HomePage() {
             />
             <p className="text-xs text-muted-foreground mt-1">
               We'll use this to check availability and prices in your area
+            </p>
+          </div>
+
+          {/* Retailer Selection */}
+          <div className="mt-6">
+            <label className="block text-sm font-medium mb-3">
+              Select Retailers to Compare
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {[
+                { id: 'walmart', name: 'Walmart', color: 'bg-primary-lime-bg' },
+                { id: 'walgreens', name: 'Walgreens', color: 'bg-red-50' },
+                { id: 'marianos', name: "Mariano's", color: 'bg-secondary-lavender-bg' },
+                { id: 'costco', name: 'Costco', color: 'bg-blue-50' },
+                { id: 'samsclub', name: "Sam's Club", color: 'bg-accent-peach/30' },
+              ].map((retailer) => (
+                <label
+                  key={retailer.id}
+                  className={cn(
+                    'flex items-center gap-3 p-4 rounded-2xl border-2 cursor-pointer transition-all',
+                    selectedRetailers.includes(retailer.id)
+                      ? 'border-primary-lime bg-primary-lime-bg shadow-md'
+                      : 'border-gray-200 hover:border-gray-300',
+                    retailer.color
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedRetailers.includes(retailer.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedRetailers([...selectedRetailers, retailer.id]);
+                      } else {
+                        setSelectedRetailers(selectedRetailers.filter(r => r !== retailer.id));
+                      }
+                    }}
+                    className="w-5 h-5 rounded border-gray-300 text-primary-lime focus:ring-primary-lime"
+                  />
+                  <span className="font-medium">{retailer.name}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Select one or more retailers to compare prices (selecting all gives you the best comparison)
             </p>
           </div>
         </Card>

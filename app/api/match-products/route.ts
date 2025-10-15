@@ -8,18 +8,29 @@ const anthropic = new Anthropic({
 });
 
 // Generate realistic product information for each item using AI
-async function generateProductsForItem(item: GroceryItem): Promise<RetailerProduct[]> {
-  const retailers: Retailer[] = ['walmart', 'walgreens', 'marianos', 'costco', 'samsclub'];
+async function generateProductsForItem(item: GroceryItem, selectedRetailers: Retailer[]): Promise<RetailerProduct[]> {
+  const retailers = selectedRetailers;
   
   try {
-    const prompt = `Generate realistic product information for this grocery item across 5 retailers: ${item.name}
+    const retailerNames = retailers.map(r => {
+      const names: Record<string, string> = {
+        walmart: 'Walmart',
+        walgreens: 'Walgreens',
+        marianos: "Mariano's",
+        costco: 'Costco',
+        samsclub: "Sam's Club"
+      };
+      return names[r];
+    }).join(', ');
+
+    const prompt = `Generate realistic product information for this grocery item across these retailers: ${item.name}
     
 Quantity requested: ${item.quantity}
 Brand preference: ${item.brand || 'any'}
 Size preference: ${item.size || 'standard'}
 Notes: ${item.notes?.join(', ') || 'none'}
 
-For each of these retailers (Walmart, Walgreens, Mariano's, Costco, Sam's Club), create a realistic product listing with:
+For each of these retailers (${retailerNames}), create a realistic product listing with:
 - Product title (be specific, e.g., "Great Value Large White Eggs, 12 Count")
 - Brand name (use real brands or store brands)
 - Size/quantity (be specific with units)
@@ -81,7 +92,7 @@ Respond with ONLY valid JSON in this exact format:
 
 export async function POST(request: NextRequest) {
   try {
-    const { items, zipCode } = await request.json();
+    const { items, zipCode, retailers } = await request.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -97,11 +108,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!retailers || !Array.isArray(retailers) || retailers.length === 0) {
+      return NextResponse.json(
+        { error: 'At least one retailer must be selected' },
+        { status: 400 }
+      );
+    }
+
     // Generate products using AI for each item
     const allProducts = new Map<string, RetailerProduct[]>();
     
     for (const item of items as GroceryItem[]) {
-      const products = await generateProductsForItem(item);
+      const products = await generateProductsForItem(item, retailers as Retailer[]);
       allProducts.set(item.name, products);
     }
 
