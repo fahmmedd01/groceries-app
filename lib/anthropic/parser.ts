@@ -53,7 +53,7 @@ Respond with the complete updated list as valid JSON (no markdown, no explanatio
 export async function parseGroceryInput(input: string): Promise<ParsedGroceryList> {
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-3-haiku-20240307',
       max_tokens: 2048,
       messages: [
         {
@@ -94,7 +94,7 @@ export async function refineGroceryList(
 ): Promise<GroceryItem[]> {
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-3-haiku-20240307',
       max_tokens: 2048,
       messages: [
         {
