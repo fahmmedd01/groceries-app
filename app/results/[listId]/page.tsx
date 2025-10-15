@@ -65,6 +65,9 @@ export default async function ResultsPage({
     size: item.size,
     notes: item.notes,
     order_index: item.order_index,
+    purchased: item.purchased || false,
+    purchased_retailer: item.purchased_retailer || null,
+    purchased_at: item.purchased_at || null,
     matches: item.retailer_matches?.map((match: any) => ({
       retailer: match.retailer,
       title: match.title,

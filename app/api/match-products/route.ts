@@ -131,14 +131,21 @@ export async function POST(request: NextRequest) {
       const { data: { user } } = await supabase.auth.getUser();
 
       // Check if there's an active list for this user/guest
-      const { data: activeList, error: activListError } = await supabase
+      let query = supabase
         .from('grocery_lists')
         .select('*')
         .eq('is_active', true)
-        .eq('user_id', user?.id || null)
         .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(1);
+      
+      // Add user filter
+      if (user?.id) {
+        query = query.eq('user_id', user.id);
+      } else {
+        query = query.is('user_id', null);
+      }
+      
+      const { data: activeList, error: activListError } = await query.maybeSingle();
 
       let listData;
       

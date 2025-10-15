@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
 
     // Get active list for the user (or most recent active list for guests)
-    const { data: activeList, error } = await supabase
+    let query = supabase
       .from('grocery_lists')
       .select(`
         *,
@@ -20,10 +20,17 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('is_active', true)
-      .eq('user_id', user?.id || null)
       .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
+      .limit(1);
+    
+    // Add user filter
+    if (user?.id) {
+      query = query.eq('user_id', user.id);
+    } else {
+      query = query.is('user_id', null);
+    }
+    
+    const { data: activeList, error } = await query.single();
 
     if (error && error.code !== 'PGRST116') {
       // PGRST116 is "not found" which is okay
