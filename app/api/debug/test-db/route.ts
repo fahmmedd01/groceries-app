@@ -119,8 +119,8 @@ export async function GET(request: NextRequest) {
       results.tests.stores = { status: 'exception', error: e.message };
     }
 
-    // Test 6: Try to create a test user
-    const testUserId = 'test-' + Date.now();
+    // Test 6: Try to create a test user with valid UUID
+    const testUserId = crypto.randomUUID();
     try {
       const { error: insertError } = await supabase
         .from('users')
