@@ -9,7 +9,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ArrowLeft, ExternalLink, TrendingDown } from 'lucide-react';
 import { ListItem, Retailer, GroceryList, GroceryItem, RetailerProduct } from '@/lib/types';
 import { formatPrice } from '@/lib/utils';
-import Image from 'next/image';
 interface ResultsClientProps {
   list: GroceryList;
   items: ListItem[];
@@ -254,13 +253,11 @@ function ProductCard({ item, product, isBestPrice, savings }: ProductCardProps) 
   return (
     <Card className="overflow-hidden hover:shadow-float transition-all">
       {/* Product Image */}
-      <div className="relative h-48 bg-muted">
-        <Image
-          src={product.imageUrl}
-          alt={product.title}
-          fill
-          className="object-cover"
-        />
+      <div className="relative h-48 bg-gradient-to-br from-primary-lime-bg to-secondary-lavender-bg flex items-center justify-center">
+        <div className="text-center px-4">
+          <div className="text-6xl mb-2">🛒</div>
+          <p className="text-sm font-medium text-muted-foreground">{item.name}</p>
+        </div>
         {isBestPrice && savings && savings > 0 && (
           <div className="absolute top-2 right-2">
             <Badge variant="success" className="gap-1">
