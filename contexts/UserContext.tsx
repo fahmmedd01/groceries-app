@@ -30,13 +30,60 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const signIn = (name: string, email: string) => {
+  const signIn = async (name: string, email: string) => {
+    try {
+      // Check if user exists in database by email
+      const response = await fetch(`/api/users/find-by-email?email=${encodeURIComponent(email)}`);
+      
+      if (response.ok) {
+        const { user: existingUser } = await response.json();
+        
+        if (existingUser) {
+          // User exists - use their existing ID
+          const userData: User = {
+            id: existingUser.id,
+            email: existingUser.email,
+            full_name: name, // Use the new name they provided
+            created_at: existingUser.created_at,
+          };
+          
+          // Update their name in database
+          await fetch('/api/users/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: existingUser.id,
+              fullName: name,
+            }),
+          });
+          
+          setUser(userData);
+          localStorage.setItem('grocery_user', JSON.stringify(userData));
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for existing user:', error);
+    }
+    
+    // User doesn't exist - create new one
     const newUser: User = {
       id: crypto.randomUUID(),
       email,
       full_name: name,
       created_at: new Date().toISOString(),
     };
+    
+    // Create user in database
+    try {
+      await fetch('/api/users/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser),
+      });
+    } catch (error) {
+      console.error('Error creating user:', error);
+    }
     
     setUser(newUser);
     localStorage.setItem('grocery_user', JSON.stringify(newUser));

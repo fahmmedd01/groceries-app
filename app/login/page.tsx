@@ -22,7 +22,7 @@ export default function LoginPage() {
     }
   }, [user, isLoading, router]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -42,13 +42,13 @@ export default function LoginPage() {
       return;
     }
 
-    signIn(name.trim(), email.trim());
+    await signIn(name.trim(), email.trim());
     router.push('/');
   };
 
-  const handleContinueAsGuest = () => {
+  const handleContinueAsGuest = async () => {
     // Create a guest user
-    signIn('Guest', `guest-${Date.now()}@local`);
+    await signIn('Guest', `guest-${Date.now()}@local`);
     router.push('/');
   };
 
