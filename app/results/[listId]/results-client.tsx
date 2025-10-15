@@ -6,9 +6,10 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { ArrowLeft, ExternalLink, TrendingDown } from 'lucide-react';
+import { ArrowLeft, ExternalLink, TrendingDown, CheckCircle2 } from 'lucide-react';
 import { ListItem, Retailer, GroceryList, GroceryItem, RetailerProduct } from '@/lib/types';
 import { formatPrice } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 interface ResultsClientProps {
   list: GroceryList;
   items: ListItem[];
@@ -36,6 +37,7 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
   const [activeTab, setActiveTab] = useState<string>('best-price');
   const [items, setItems] = useState<ListItem[]>(initialItems);
   const [loading, setLoading] = useState(false);
+  const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
   
   // Extract unique retailers from initial items' matches (for database-loaded lists)
   const initialRetailers = useMemo(() => {
@@ -96,6 +98,72 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
     }
   }, [list.id, initialItems, list]);
 
+  // Toggle purchased status
+  const togglePurchased = async (itemId: string, purchased: boolean, retailer?: string) => {
+    setUpdatingItemId(itemId);
+
+    try {
+      // For temp lists, update in sessionStorage
+      if (list.id.startsWith('temp-')) {
+        const updatedItems = items.map(item =>
+          item.id === itemId
+            ? {
+                ...item,
+                purchased,
+                purchased_retailer: purchased && retailer ? retailer : null,
+                purchased_at: purchased ? new Date().toISOString() : null,
+              }
+            : item
+        );
+        setItems(updatedItems);
+
+        // Update sessionStorage
+        const storedData = sessionStorage.getItem(`list-${list.id}`);
+        if (storedData) {
+          const data = JSON.parse(storedData);
+          sessionStorage.setItem(`list-${list.id}`, JSON.stringify({
+            ...data,
+            purchasedItems: updatedItems.filter(i => i.purchased).map(i => ({
+              id: i.id,
+              purchased: i.purchased,
+              purchased_retailer: i.purchased_retailer,
+              purchased_at: i.purchased_at,
+            })),
+          }));
+        }
+      } else {
+        // For database lists, call API
+        const response = await fetch(`/api/items/${itemId}/toggle-purchased`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ purchased, retailer }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update purchased status');
+        }
+
+        // Update local state
+        const updatedItems = items.map(item =>
+          item.id === itemId
+            ? {
+                ...item,
+                purchased,
+                purchased_retailer: purchased && retailer ? retailer : null,
+                purchased_at: purchased ? new Date().toISOString() : null,
+              }
+            : item
+        );
+        setItems(updatedItems);
+      }
+    } catch (error) {
+      console.error('Error toggling purchased status:', error);
+      // Show error to user (you could add a toast notification here)
+    } finally {
+      setUpdatingItemId(null);
+    }
+  };
+
   // Calculate best prices
   const bestPriceData = useMemo(() => {
     return items.map(item => {
@@ -122,6 +190,11 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
     (sum, { item, bestMatch }) => sum + (bestMatch?.price || 0) * (item.quantity || 1),
     0
   );
+
+  // Calculate purchase progress
+  const purchasedCount = items.filter(item => item.purchased).length;
+  const totalCount = items.length;
+  const purchaseProgress = totalCount > 0 ? Math.round((purchasedCount / totalCount) * 100) : 0;
 
   // Filter items by retailer
   const getItemsByRetailer = (retailer: Retailer) => {
@@ -169,11 +242,26 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
         {/* Summary Card */}
         <Card className="p-6 mb-8 bg-primary-lime-bg border-0">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
+            <div className="flex-1">
               <h2 className="text-2xl font-bold mb-2">Your Grocery List</h2>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-3">
                 {items.length} items • ZIP Code: {list.zip_code}
               </p>
+              {/* Purchase Progress */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="h-4 w-4 text-primary-lime" />
+                  <span className="font-medium">
+                    {purchasedCount} of {totalCount} items purchased ({purchaseProgress}%)
+                  </span>
+                </div>
+                <div className="w-full max-w-xs bg-white/50 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="h-full bg-primary-lime transition-all duration-300"
+                    style={{ width: `${purchaseProgress}%` }}
+                  />
+                </div>
+              </div>
             </div>
             <div className="text-right">
               <p className="text-sm text-muted-foreground mb-1">
@@ -218,6 +306,8 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
                   product={bestMatch}
                   isBestPrice
                   savings={savings}
+                  onTogglePurchased={togglePurchased}
+                  isUpdating={updatingItemId === item.id}
                 />
               ))}
             </div>
@@ -235,6 +325,8 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
                         key={item.id}
                         item={item}
                         product={match!}
+                        onTogglePurchased={togglePurchased}
+                        isUpdating={updatingItemId === item.id}
                       />
                     ))}
                   </div>
@@ -263,28 +355,62 @@ interface ProductCardProps {
   product: any;
   isBestPrice?: boolean;
   savings?: number;
+  onTogglePurchased: (itemId: string, purchased: boolean, retailer?: string) => Promise<void>;
+  isUpdating: boolean;
 }
 
-function ProductCard({ item, product, isBestPrice, savings }: ProductCardProps) {
+function ProductCard({ item, product, isBestPrice, savings, onTogglePurchased, isUpdating }: ProductCardProps) {
   const stockColors = {
     'in-stock': 'success',
     'low-stock': 'warning',
     'out-of-stock': 'destructive',
   };
 
+  const isPurchased = item.purchased || false;
+
   return (
-    <Card className="overflow-hidden hover:shadow-float transition-all">
+    <Card className={cn(
+      "overflow-hidden hover:shadow-float transition-all relative",
+      isPurchased && "opacity-60"
+    )}>
+      {/* Purchased Checkbox */}
+      <div className="absolute top-3 left-3 z-10">
+        <label className="flex items-center gap-2 cursor-pointer bg-white/90 backdrop-blur-sm rounded-full px-3 py-2 shadow-sm hover:bg-white transition-all">
+          <input
+            type="checkbox"
+            checked={isPurchased}
+            onChange={(e) => onTogglePurchased(item.id, e.target.checked, product.retailer)}
+            disabled={isUpdating}
+            className="w-5 h-5 rounded border-gray-300 text-primary-lime focus:ring-primary-lime cursor-pointer"
+          />
+          <span className="text-sm font-medium">
+            {isPurchased ? 'Purchased' : 'Mark as Purchased'}
+          </span>
+        </label>
+      </div>
+
       {/* Product Image */}
-      <div className="relative h-48 bg-gradient-to-br from-primary-lime-bg to-secondary-lavender-bg flex items-center justify-center">
+      <div className={cn(
+        "relative h-48 bg-gradient-to-br from-primary-lime-bg to-secondary-lavender-bg flex items-center justify-center",
+        isPurchased && "grayscale"
+      )}>
         <div className="text-center px-4">
           <div className="text-6xl mb-2">🛒</div>
           <p className="text-sm font-medium text-muted-foreground">{item.name}</p>
         </div>
-        {isBestPrice && savings && savings > 0 && (
+        {isBestPrice && savings && savings > 0 && !isPurchased && (
           <div className="absolute top-2 right-2">
             <Badge variant="success" className="gap-1">
               <TrendingDown className="h-3 w-3" />
               Save {formatPrice(savings)}
+            </Badge>
+          </div>
+        )}
+        {isPurchased && (
+          <div className="absolute top-2 right-2">
+            <Badge variant="default" className="gap-1 bg-green-600">
+              <CheckCircle2 className="h-3 w-3" />
+              Purchased
             </Badge>
           </div>
         )}
@@ -293,7 +419,10 @@ function ProductCard({ item, product, isBestPrice, savings }: ProductCardProps) 
       {/* Product Info */}
       <div className="p-4">
         <div className="flex items-start justify-between mb-2">
-          <h3 className="font-semibold line-clamp-2 text-sm flex-1">
+          <h3 className={cn(
+            "font-semibold line-clamp-2 text-sm flex-1",
+            isPurchased && "line-through"
+          )}>
             {product.title}
           </h3>
         </div>

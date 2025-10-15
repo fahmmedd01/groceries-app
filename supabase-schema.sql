@@ -64,7 +64,10 @@ CREATE TABLE IF NOT EXISTS public.list_items (
   quantity INTEGER NOT NULL DEFAULT 1,
   size TEXT,
   notes TEXT,
-  order_index INTEGER NOT NULL DEFAULT 0
+  order_index INTEGER NOT NULL DEFAULT 0,
+  purchased BOOLEAN NOT NULL DEFAULT false,
+  purchased_retailer TEXT,
+  purchased_at TIMESTAMP WITH TIME ZONE
 );
 
 -- Enable RLS on list_items table
@@ -179,3 +182,37 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_user();
 
+-- Migration: Add purchased columns to list_items table (if not exists)
+-- Run this if you're updating an existing database
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'list_items' 
+    AND column_name = 'purchased'
+  ) THEN
+    ALTER TABLE public.list_items 
+    ADD COLUMN purchased BOOLEAN NOT NULL DEFAULT false;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'list_items' 
+    AND column_name = 'purchased_retailer'
+  ) THEN
+    ALTER TABLE public.list_items 
+    ADD COLUMN purchased_retailer TEXT;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'list_items' 
+    AND column_name = 'purchased_at'
+  ) THEN
+    ALTER TABLE public.list_items 
+    ADD COLUMN purchased_at TIMESTAMP WITH TIME ZONE;
+  END IF;
+END $$;

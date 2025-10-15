@@ -35,6 +35,9 @@ export interface ListItem {
   size: string | null;
   notes: string | null;
   order_index: number;
+  purchased?: boolean;
+  purchased_retailer?: string | null;
+  purchased_at?: string | null;
   matches?: RetailerProduct[];
 }
 
