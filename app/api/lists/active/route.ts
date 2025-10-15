@@ -30,10 +30,9 @@ export async function GET(request: NextRequest) {
       query = query.is('user_id', null);
     }
     
-    const { data: activeList, error } = await query.single();
+    const { data: activeList, error } = await query.maybeSingle();
 
-    if (error && error.code !== 'PGRST116') {
-      // PGRST116 is "not found" which is okay
+    if (error) {
       console.error('Error fetching active list:', error);
       return NextResponse.json(
         { error: 'Failed to fetch active list' },
