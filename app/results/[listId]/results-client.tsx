@@ -28,7 +28,7 @@ async function generateProductsForItem(item: GroceryItem): Promise<RetailerProdu
     price: 4.99 + (index * 0.75) + (Math.random() * 2),
     stockStatus: Math.random() > 0.8 ? 'low-stock' : 'in-stock' as any,
     productUrl: `https://${retailer}.com/search?q=${encodeURIComponent(item.name)}`,
-    imageUrl: `https://placehold.co/300x300/E8F0D5/2D2D2D?text=${encodeURIComponent(item.name)}`,
+    imageUrl: `https://via.placeholder.com/300/E8F0D5/2D2D2D?text=${encodeURIComponent(item.name.substring(0, 20))}`,
   }));
 }
 

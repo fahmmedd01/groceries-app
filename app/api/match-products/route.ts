@@ -60,7 +60,7 @@ Respond with ONLY valid JSON in this exact format:
       price: parseFloat(p.price),
       stockStatus: p.stockStatus,
       productUrl: `https://${p.retailer}.com/search?q=${encodeURIComponent(item.name)}`,
-      imageUrl: `https://placehold.co/300x300/E8F0D5/2D2D2D?text=${encodeURIComponent(item.name)}`,
+      imageUrl: `https://via.placeholder.com/300/E8F0D5/2D2D2D?text=${encodeURIComponent(item.name.substring(0, 20))}`,
     }));
   } catch (error) {
     console.error('Error generating products with AI:', error);
@@ -74,7 +74,7 @@ Respond with ONLY valid JSON in this exact format:
       price: 4.99 + (index * 0.50),
       stockStatus: 'in-stock' as const,
       productUrl: `https://${retailer}.com/search?q=${encodeURIComponent(item.name)}`,
-      imageUrl: `https://placehold.co/300x300/E8F0D5/2D2D2D?text=${encodeURIComponent(item.name)}`,
+      imageUrl: `https://via.placeholder.com/300/E8F0D5/2D2D2D?text=${encodeURIComponent(item.name.substring(0, 20))}`,
     }));
   }
 }
