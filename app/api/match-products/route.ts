@@ -130,24 +130,67 @@ export async function POST(request: NextRequest) {
       const supabase = await createClient();
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Create a grocery list in the database
-      const { data: listData, error: listError } = await supabase
+      // Check if there's an active list for this user/guest
+      const { data: activeList, error: activListError } = await supabase
         .from('grocery_lists')
-        .insert({
-          user_id: user?.id || null,
-          title: `Grocery List - ${new Date().toLocaleDateString()}`,
-          zip_code: zipCode,
-        })
-        .select()
-        .single();
+        .select('*')
+        .eq('is_active', true)
+        .eq('user_id', user?.id || null)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (listError) {
-        console.error('Error creating list:', listError);
-        console.error('Supabase error details:', JSON.stringify(listError, null, 2));
-        // Continue without database - return temporary ID
-        listId = 'temp-' + Date.now();
+      let listData;
+      
+      if (activeList) {
+        // Use existing active list and update its timestamp
+        await supabase
+          .from('grocery_lists')
+          .update({ 
+            updated_at: new Date().toISOString(),
+            zip_code: zipCode // Update ZIP code if changed
+          })
+          .eq('id', activeList.id);
+        
+        listData = activeList;
+        listId = activeList.id;
       } else {
-        listId = listData.id;
+        // Create a new active grocery list
+        const { data: newList, error: listError } = await supabase
+          .from('grocery_lists')
+          .insert({
+            user_id: user?.id || null,
+            title: `My Shopping List`,
+            zip_code: zipCode,
+            is_active: true,
+            status: 'active',
+          })
+          .select()
+          .single();
+
+        if (listError) {
+          console.error('Error creating list:', listError);
+          console.error('Supabase error details:', JSON.stringify(listError, null, 2));
+          // Continue without database - return temporary ID
+          listId = 'temp-' + Date.now();
+        } else {
+          listData = newList;
+          listId = newList.id;
+        }
+      }
+
+      if (listData && listId && !listId.startsWith('temp-')) {
+        // Get the current max order_index to append new items
+        const { data: existingItems } = await supabase
+          .from('list_items')
+          .select('order_index')
+          .eq('list_id', listData.id)
+          .order('order_index', { ascending: false })
+          .limit(1);
+
+        const startIndex = existingItems && existingItems.length > 0 
+          ? existingItems[0].order_index + 1 
+          : 0;
 
         // Insert list items and their retailer matches
         const listItems = items.map((item: GroceryItem, index: number) => ({
@@ -157,7 +200,8 @@ export async function POST(request: NextRequest) {
           quantity: item.quantity,
           size: item.size || null,
           notes: item.notes?.join(', ') || null,
-          order_index: index,
+          order_index: startIndex + index,
+          purchased: false, // New items are not purchased
         }));
 
         const { data: insertedItems, error: itemsError } = await supabase

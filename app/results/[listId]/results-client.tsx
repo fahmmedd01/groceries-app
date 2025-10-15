@@ -38,6 +38,7 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
   const [items, setItems] = useState<ListItem[]>(initialItems);
   const [loading, setLoading] = useState(false);
   const [updatingItemId, setUpdatingItemId] = useState<string | null>(null);
+  const [showPurchased, setShowPurchased] = useState(false);
   
   // Extract unique retailers from initial items' matches (for database-loaded lists)
   const initialRetailers = useMemo(() => {
@@ -164,9 +165,14 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
     }
   };
 
+  // Filter items based on purchased status
+  const displayItems = useMemo(() => {
+    return showPurchased ? items : items.filter(item => !item.purchased);
+  }, [items, showPurchased]);
+
   // Calculate best prices
   const bestPriceData = useMemo(() => {
-    return items.map(item => {
+    return displayItems.map(item => {
       const matches = item.matches || [];
       const bestMatch = matches.reduce((best, current) => {
         if (!best || current.price < best.price) {
@@ -198,7 +204,7 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
 
   // Filter items by retailer
   const getItemsByRetailer = (retailer: Retailer) => {
-    return items
+    return displayItems
       .map(item => ({
         item,
         match: item.matches?.find(m => m.retailer === retailer),
@@ -243,9 +249,21 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
         <Card className="p-6 mb-8 bg-primary-lime-bg border-0">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold mb-2">Your Grocery List</h2>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-2xl font-bold">Your Grocery List</h2>
+                {purchasedCount > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPurchased(!showPurchased)}
+                    className="ml-4"
+                  >
+                    {showPurchased ? 'Hide' : 'Show'} Purchased ({purchasedCount})
+                  </Button>
+                )}
+              </div>
               <p className="text-muted-foreground mb-3">
-                {items.length} items • ZIP Code: {list.zip_code}
+                {displayItems.length} items shown • {items.length} total • ZIP Code: {list.zip_code}
               </p>
               {/* Purchase Progress */}
               <div className="space-y-2">

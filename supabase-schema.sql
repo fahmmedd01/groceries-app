@@ -31,7 +31,9 @@ CREATE TABLE IF NOT EXISTS public.grocery_lists (
   title TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
-  zip_code TEXT NOT NULL
+  zip_code TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  status TEXT NOT NULL DEFAULT 'active'
 );
 
 -- Enable RLS on grocery_lists table
@@ -214,5 +216,29 @@ BEGIN
   ) THEN
     ALTER TABLE public.list_items 
     ADD COLUMN purchased_at TIMESTAMP WITH TIME ZONE;
+  END IF;
+END $$;
+
+-- Migration: Add is_active and status columns to grocery_lists table
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'grocery_lists' 
+    AND column_name = 'is_active'
+  ) THEN
+    ALTER TABLE public.grocery_lists 
+    ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'grocery_lists' 
+    AND column_name = 'status'
+  ) THEN
+    ALTER TABLE public.grocery_lists 
+    ADD COLUMN status TEXT NOT NULL DEFAULT 'active';
   END IF;
 END $$;

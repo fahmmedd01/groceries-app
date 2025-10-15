@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { VoiceInput } from '@/components/VoiceInput';
 import { TextInput } from '@/components/TextInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Mic, Type, ShoppingCart, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Mic, Type, ShoppingCart, Loader2, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { GroceryList, ListItem } from '@/lib/types';
 
 export default function HomePage() {
   const router = useRouter();
@@ -18,6 +20,33 @@ export default function HomePage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedRetailers, setSelectedRetailers] = useState<string[]>([]);
+  const [activeList, setActiveList] = useState<GroceryList | null>(null);
+  const [existingItems, setExistingItems] = useState<ListItem[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
+
+  // Load active list on mount
+  useEffect(() => {
+    async function loadActiveList() {
+      try {
+        const response = await fetch('/api/lists/active');
+        if (response.ok) {
+          const { list } = await response.json();
+          if (list) {
+            setActiveList(list);
+            setZipCode(list.zip_code || '');
+            // Filter unpurchased items
+            const unpurchasedItems = (list.items || []).filter((item: ListItem) => !item.purchased);
+            setExistingItems(unpurchasedItems);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading active list:', error);
+      } finally {
+        setLoadingList(false);
+      }
+    }
+    loadActiveList();
+  }, []);
 
   const handleBuildList = async () => {
     if (!inputText.trim()) {
@@ -75,7 +104,8 @@ export default function HomePage() {
         }));
       }
 
-      // Navigate to results page
+      // Clear input and navigate to results page
+      setInputText('');
       router.push(`/results/${listId}`);
     } catch (err) {
       console.error('Error building list:', err);
@@ -107,6 +137,44 @@ export default function HomePage() {
             Use voice or text to create your shopping list and compare prices across stores
           </p>
         </div>
+
+        {/* Existing Items Summary */}
+        {!loadingList && existingItems.length > 0 && (
+          <Card className="mb-8 p-6 bg-primary-lime-bg border-2 border-primary-lime">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <Package className="h-6 w-6 text-primary-lime" />
+                <div>
+                  <h3 className="text-lg font-bold">Your Active Shopping List</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {existingItems.length} item{existingItems.length !== 1 ? 's' : ''} waiting to be purchased
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => activeList && router.push(`/results/${activeList.id}`)}
+                className="gap-2"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                View List
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {existingItems.slice(0, 10).map((item, index) => (
+                <Badge key={index} variant="secondary" className="text-sm">
+                  {item.quantity}x {item.name}
+                </Badge>
+              ))}
+              {existingItems.length > 10 && (
+                <Badge variant="secondary" className="text-sm">
+                  +{existingItems.length - 10} more
+                </Badge>
+              )}
+            </div>
+          </Card>
+        )}
 
         {/* Input Mode Toggle */}
         <div className="flex justify-center mb-8">

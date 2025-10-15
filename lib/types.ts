@@ -48,6 +48,8 @@ export interface GroceryList {
   created_at: string;
   updated_at: string;
   zip_code: string;
+  is_active?: boolean;
+  status?: string;
   items?: ListItem[];
 }
 
