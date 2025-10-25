@@ -34,6 +34,13 @@ export default function HomePage() {
   const [customRetailer, setCustomRetailer] = useState('');
 
   const handleAddItems = async () => {
+    console.log('handleAddItems called with:', {
+      inputText,
+      selectedRetailer,
+      customRetailer,
+      user: user?.email,
+    });
+
     if (!inputText.trim()) {
       setError('Please add some grocery items first.');
       return;
@@ -62,10 +69,13 @@ export default function HomePage() {
       });
 
       if (!parseResponse.ok) {
-        throw new Error('Failed to parse grocery items');
+        const errorData = await parseResponse.json().catch(() => ({}));
+        console.error('Parse API error:', errorData);
+        throw new Error(errorData.error || 'Failed to parse grocery items');
       }
 
       const { items } = await parseResponse.json();
+      console.log('Parsed items from AI:', items);
 
       // Add items to active list
       const addResponse = await fetch('/api/items/add', {
@@ -82,10 +92,13 @@ export default function HomePage() {
       });
 
       if (!addResponse.ok) {
-        throw new Error('Failed to add items');
+        const errorData = await addResponse.json().catch(() => ({}));
+        console.error('Add items API error:', errorData);
+        throw new Error(errorData.error || 'Failed to add items');
       }
 
       const { listId, itemCount } = await addResponse.json();
+      console.log('Items added successfully:', { listId, itemCount });
 
       // Clear input and show success
       setInputText('');
