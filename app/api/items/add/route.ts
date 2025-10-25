@@ -128,17 +128,22 @@ export async function POST(request: NextRequest) {
       : 0;
 
     // Insert list items
-    const listItems = items.map((item: GroceryItem, index: number) => ({
-      list_id: listData.id,
-      name: item.name,
-      brand: item.brand || null,
-      quantity: item.quantity,
-      size: item.size || null,
-      notes: item.notes?.join(', ') || null,
-      retailer: finalRetailer,
-      order_index: startIndex + index,
-      purchased: false,
-    }));
+    const listItems = items.map((item: GroceryItem, index: number) => {
+      // Use item's specific retailer if provided, otherwise use selected retailer from dropdown
+      const itemRetailer = item.retailer || finalRetailer;
+      
+      return {
+        list_id: listData.id,
+        name: item.name,
+        brand: item.brand || null,
+        quantity: item.quantity,
+        size: item.size || null,
+        notes: item.notes?.join(', ') || null,
+        retailer: itemRetailer, // Per-item retailer assignment with fallback
+        order_index: startIndex + index,
+        purchased: false,
+      };
+    });
 
     const { data: insertedItems, error: itemsError } = await supabase
       .from('list_items')

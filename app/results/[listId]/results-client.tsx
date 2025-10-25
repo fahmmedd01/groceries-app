@@ -95,11 +95,53 @@ export function ResultsClient({ list, items: initialItems }: ResultsClientProps)
   };
 
   const retailerNames: Record<string, string> = {
-    walmart: 'Walmart',
-    walgreens: 'Walgreens',
-    marianos: "Mariano's",
+    // Warehouse Clubs
     costco: 'Costco',
     samsclub: "Sam's Club",
+    bjs: "BJ's Wholesale",
+    
+    // Supermarkets
+    walmart: 'Walmart',
+    target: 'Target',
+    kroger: 'Kroger',
+    publix: 'Publix',
+    safeway: 'Safeway',
+    albertsons: 'Albertsons',
+    heb: 'H-E-B',
+    meijer: 'Meijer',
+    wegmans: 'Wegmans',
+    gianteagle: 'Giant Eagle',
+    foodlion: 'Food Lion',
+    stopandshop: 'Stop & Shop',
+    giantfood: 'Giant Food',
+    marianos: "Mariano's",
+    harristeeter: 'Harris Teeter',
+    shoprite: 'ShopRite',
+    ralphs: 'Ralphs',
+    fredmeyer: 'Fred Meyer',
+    qfc: 'QFC',
+    kingsoopers: 'King Soopers',
+    smiths: "Smith's",
+    frys: "Fry's",
+    dillons: 'Dillons',
+    marketbasket: 'Market Basket',
+    wincofoods: 'WinCo Foods',
+    lidl: 'Lidl',
+    
+    // Specialty Grocers
+    wholefoods: 'Whole Foods',
+    traderjoes: "Trader Joe's",
+    aldi: 'Aldi',
+    sprouts: 'Sprouts',
+    freshthyme: 'Fresh Thyme',
+    
+    // Pharmacies
+    cvs: 'CVS',
+    walgreens: 'Walgreens',
+    riteaid: 'Rite Aid',
+    duanereade: 'Duane Reade',
+    
+    // Fallback
     other: 'Other',
   };
 

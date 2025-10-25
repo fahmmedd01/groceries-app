@@ -18,6 +18,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from '@/components/ui/select';
 
 export default function HomePage() {
@@ -208,11 +210,60 @@ export default function HomePage() {
                 <SelectValue placeholder="Choose a retailer..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="walmart">Walmart</SelectItem>
-                <SelectItem value="walgreens">Walgreens</SelectItem>
-                <SelectItem value="marianos">Mariano&apos;s</SelectItem>
-                <SelectItem value="costco">Costco</SelectItem>
-                <SelectItem value="samsclub">Sam&apos;s Club</SelectItem>
+                <SelectGroup>
+                  <SelectLabel>Warehouse Clubs</SelectLabel>
+                  <SelectItem value="costco">Costco</SelectItem>
+                  <SelectItem value="samsclub">Sam&apos;s Club</SelectItem>
+                  <SelectItem value="bjs">BJ&apos;s Wholesale</SelectItem>
+                </SelectGroup>
+                
+                <SelectGroup>
+                  <SelectLabel>Supermarkets</SelectLabel>
+                  <SelectItem value="walmart">Walmart</SelectItem>
+                  <SelectItem value="target">Target</SelectItem>
+                  <SelectItem value="kroger">Kroger</SelectItem>
+                  <SelectItem value="publix">Publix</SelectItem>
+                  <SelectItem value="safeway">Safeway</SelectItem>
+                  <SelectItem value="albertsons">Albertsons</SelectItem>
+                  <SelectItem value="heb">H-E-B</SelectItem>
+                  <SelectItem value="meijer">Meijer</SelectItem>
+                  <SelectItem value="wegmans">Wegmans</SelectItem>
+                  <SelectItem value="gianteagle">Giant Eagle</SelectItem>
+                  <SelectItem value="foodlion">Food Lion</SelectItem>
+                  <SelectItem value="stopandshop">Stop & Shop</SelectItem>
+                  <SelectItem value="giantfood">Giant Food</SelectItem>
+                  <SelectItem value="marianos">Mariano&apos;s</SelectItem>
+                  <SelectItem value="harristeeter">Harris Teeter</SelectItem>
+                  <SelectItem value="shoprite">ShopRite</SelectItem>
+                  <SelectItem value="ralphs">Ralphs</SelectItem>
+                  <SelectItem value="fredmeyer">Fred Meyer</SelectItem>
+                  <SelectItem value="qfc">QFC</SelectItem>
+                  <SelectItem value="kingsoopers">King Soopers</SelectItem>
+                  <SelectItem value="smiths">Smith&apos;s</SelectItem>
+                  <SelectItem value="frys">Fry&apos;s</SelectItem>
+                  <SelectItem value="dillons">Dillons</SelectItem>
+                  <SelectItem value="marketbasket">Market Basket</SelectItem>
+                  <SelectItem value="wincofoods">WinCo Foods</SelectItem>
+                  <SelectItem value="lidl">Lidl</SelectItem>
+                </SelectGroup>
+                
+                <SelectGroup>
+                  <SelectLabel>Specialty Grocers</SelectLabel>
+                  <SelectItem value="wholefoods">Whole Foods</SelectItem>
+                  <SelectItem value="traderjoes">Trader Joe&apos;s</SelectItem>
+                  <SelectItem value="aldi">Aldi</SelectItem>
+                  <SelectItem value="sprouts">Sprouts</SelectItem>
+                  <SelectItem value="freshthyme">Fresh Thyme</SelectItem>
+                </SelectGroup>
+                
+                <SelectGroup>
+                  <SelectLabel>Pharmacies</SelectLabel>
+                  <SelectItem value="cvs">CVS</SelectItem>
+                  <SelectItem value="walgreens">Walgreens</SelectItem>
+                  <SelectItem value="riteaid">Rite Aid</SelectItem>
+                  <SelectItem value="duanereade">Duane Reade</SelectItem>
+                </SelectGroup>
+                
                 <SelectItem value="other">Other (Custom)</SelectItem>
               </SelectContent>
             </Select>
@@ -273,10 +324,10 @@ export default function HomePage() {
         <div className="mt-8 p-6 bg-primary-lime-bg rounded-2xl">
           <h3 className="font-semibold mb-2">Tips for Best Results:</h3>
           <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Say or type items naturally: &quot;2 cartons of eggs and 1 gallon of milk&quot;</li>
+            <li>• Specify retailer per item: &quot;eggs from walmart, milk from costco&quot;</li>
+            <li>• Or select a retailer above for all items without one specified</li>
             <li>• Include quantities and sizes for better organization</li>
             <li>• Mention brands if you have a preference</li>
-            <li>• Select the store you plan to shop at</li>
           </ul>
         </div>
       </main>

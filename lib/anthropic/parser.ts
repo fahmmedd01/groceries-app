@@ -14,20 +14,33 @@ Extract the following for each item:
 - brand: The brand name if mentioned (null otherwise)
 - size: The size or packaging info if mentioned (e.g., "dozen", "gallon", "12 oz")
 - notes: Array of special requirements (e.g., ["organic"], ["unsalted"], ["low-fat"])
+- retailer: The store name if mentioned using words like "from", "at", "get at", "buy at" (null otherwise, lowercase)
+
+Common retailers: walmart, target, kroger, costco, sams club, bjs, cvs, walgreens, rite aid, whole foods, trader joes, aldi, publix, safeway, albertsons, heb, meijer, wegmans, giant eagle, food lion, stop and shop, marianos, harris teeter, shoprite, ralphs, fred meyer, sprouts, fresh thyme, etc.
 
 Examples:
-Input: "two cartons of eggs and Tide Pods"
+Input: "eggs from walmart and milk from costco"
 Output: {
   "items": [
-    {"name": "eggs", "quantity": 2, "unit": "carton", "brand": null, "size": null, "notes": []},
-    {"name": "tide pods", "quantity": 1, "unit": "box", "brand": "Tide", "size": null, "notes": []}
+    {"name": "eggs", "quantity": 1, "unit": null, "brand": null, "size": null, "notes": [], "retailer": "walmart"},
+    {"name": "milk", "quantity": 1, "unit": null, "brand": null, "size": null, "notes": [], "retailer": "costco"}
   ]
 }
 
-Input: "Add a gallon of organic milk"
+Input: "2 gallons of milk at target and bananas"
 Output: {
   "items": [
-    {"name": "milk", "quantity": 1, "unit": "gallon", "brand": null, "size": "gallon", "notes": ["organic"]}
+    {"name": "milk", "quantity": 2, "unit": "gallon", "brand": null, "size": "gallon", "notes": [], "retailer": "target"},
+    {"name": "bananas", "quantity": 1, "unit": null, "brand": null, "size": null, "notes": [], "retailer": null}
+  ]
+}
+
+Input: "organic eggs from whole foods, bread at trader joes, and butter"
+Output: {
+  "items": [
+    {"name": "eggs", "quantity": 1, "unit": null, "brand": null, "size": null, "notes": ["organic"], "retailer": "wholefoods"},
+    {"name": "bread", "quantity": 1, "unit": null, "brand": null, "size": null, "notes": [], "retailer": "traderjoes"},
+    {"name": "butter", "quantity": 1, "unit": null, "brand": null, "size": null, "notes": [], "retailer": null}
   ]
 }
 

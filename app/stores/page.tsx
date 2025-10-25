@@ -123,11 +123,49 @@ export default function StoresPage() {
   };
 
   const retailerOptions = [
-    { value: 'walmart', label: 'Walmart' },
-    { value: 'walgreens', label: 'Walgreens' },
-    { value: 'marianos', label: "Mariano's" },
+    // Warehouse Clubs
     { value: 'costco', label: 'Costco' },
     { value: 'samsclub', label: "Sam's Club" },
+    { value: 'bjs', label: "BJ's Wholesale" },
+    // Supermarkets
+    { value: 'walmart', label: 'Walmart' },
+    { value: 'target', label: 'Target' },
+    { value: 'kroger', label: 'Kroger' },
+    { value: 'publix', label: 'Publix' },
+    { value: 'safeway', label: 'Safeway' },
+    { value: 'albertsons', label: 'Albertsons' },
+    { value: 'heb', label: 'H-E-B' },
+    { value: 'meijer', label: 'Meijer' },
+    { value: 'wegmans', label: 'Wegmans' },
+    { value: 'gianteagle', label: 'Giant Eagle' },
+    { value: 'foodlion', label: 'Food Lion' },
+    { value: 'stopandshop', label: 'Stop & Shop' },
+    { value: 'giantfood', label: 'Giant Food' },
+    { value: 'marianos', label: "Mariano's" },
+    { value: 'harristeeter', label: 'Harris Teeter' },
+    { value: 'shoprite', label: 'ShopRite' },
+    { value: 'ralphs', label: 'Ralphs' },
+    { value: 'fredmeyer', label: 'Fred Meyer' },
+    { value: 'qfc', label: 'QFC' },
+    { value: 'kingsoopers', label: 'King Soopers' },
+    { value: 'smiths', label: "Smith's" },
+    { value: 'frys', label: "Fry's" },
+    { value: 'dillons', label: 'Dillons' },
+    { value: 'marketbasket', label: 'Market Basket' },
+    { value: 'wincofoods', label: 'WinCo Foods' },
+    { value: 'lidl', label: 'Lidl' },
+    // Specialty Grocers
+    { value: 'wholefoods', label: 'Whole Foods' },
+    { value: 'traderjoes', label: "Trader Joe's" },
+    { value: 'aldi', label: 'Aldi' },
+    { value: 'sprouts', label: 'Sprouts' },
+    { value: 'freshthyme', label: 'Fresh Thyme' },
+    // Pharmacies
+    { value: 'cvs', label: 'CVS' },
+    { value: 'walgreens', label: 'Walgreens' },
+    { value: 'riteaid', label: 'Rite Aid' },
+    { value: 'duanereade', label: 'Duane Reade' },
+    // Other
     { value: 'other', label: 'Other' },
   ];
 

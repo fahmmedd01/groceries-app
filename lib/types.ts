@@ -1,4 +1,18 @@
-export type Retailer = 'walmart' | 'walgreens' | 'marianos' | 'costco' | 'samsclub' | 'other';
+export type Retailer = 
+  // Warehouse Clubs
+  | 'costco' | 'samsclub' | 'bjs'
+  // Supermarkets
+  | 'walmart' | 'target' | 'kroger' | 'publix' | 'safeway' | 'albertsons' 
+  | 'heb' | 'meijer' | 'wegmans' | 'gianteagle' | 'foodlion' | 'stopandshop'
+  | 'giantfood' | 'marianos' | 'harristeeter' | 'shoprite' | 'ralphs' 
+  | 'fredmeyer' | 'qfc' | 'kingsoopers' | 'smiths' | 'frys' | 'dillons'
+  | 'marketbasket' | 'wincofoods' | 'lidl'
+  // Specialty Grocers
+  | 'wholefoods' | 'traderjoes' | 'aldi' | 'sprouts' | 'freshthyme'
+  // Pharmacies
+  | 'cvs' | 'walgreens' | 'riteaid' | 'duanereade'
+  // Other
+  | 'other';
 
 export interface GroceryItem {
   name: string;
@@ -7,6 +21,7 @@ export interface GroceryItem {
   brand?: string | null;
   size?: string | null;
   notes?: string[];
+  retailer?: string | null;
 }
 
 export interface ParsedGroceryList {
