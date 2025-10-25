@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GroceryItem } from '@/lib/types';
 import { createClient } from '@/lib/supabase/server';
+import { normalizeRetailerName, isKnownRetailer } from '@/lib/utils/retailer-normalizer';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -129,8 +130,20 @@ export async function POST(request: NextRequest) {
 
     // Insert list items
     const listItems = items.map((item: GroceryItem, index: number) => {
-      // Use item's specific retailer if provided, otherwise use selected retailer from dropdown
-      const itemRetailer = item.retailer || finalRetailer;
+      // Normalize the retailer name from AI (handles "whole foods" -> "wholefoods", etc.)
+      const normalizedItemRetailer = item.retailer ? normalizeRetailerName(item.retailer) : null;
+      
+      // Log for debugging
+      if (item.retailer) {
+        console.log(`Item "${item.name}": AI extracted retailer="${item.retailer}", normalized to="${normalizedItemRetailer}"`);
+      }
+      
+      // Use item's specific retailer if provided and valid, otherwise use selected retailer from dropdown
+      let itemRetailer = normalizedItemRetailer && isKnownRetailer(normalizedItemRetailer)
+        ? normalizedItemRetailer
+        : (item.retailer ? item.retailer : finalRetailer); // Keep original if not in known list (custom retailer)
+      
+      console.log(`Final retailer for "${item.name}": "${itemRetailer}"`);
       
       return {
         list_id: listData.id,
