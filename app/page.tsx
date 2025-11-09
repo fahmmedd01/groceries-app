@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { AuthButton } from '@/components/AuthButton';
 import { Mic, Type, ShoppingCart, Loader2, LayoutDashboard, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { normalizeRetailerName } from '@/lib/utils/retailer-normalizer';
 import {
   Select,
   SelectContent,
@@ -86,6 +87,28 @@ export default function HomePage() {
 
       const { items } = await parseResponse.json();
       console.log('Parsed items from AI:', items);
+
+      // Auto-select retailer in dropdown if detected in voice
+      const itemsWithRetailer = items.filter((item: any) => item.retailer);
+      if (itemsWithRetailer.length > 0) {
+        // Get the most common retailer from voice input
+        const retailerCounts: Record<string, number> = {};
+        
+        itemsWithRetailer.forEach((item: any) => {
+          // Normalize retailer name (e.g., "whole foods" -> "wholefoods")
+          const normalizedRetailer = normalizeRetailerName(item.retailer);
+          const retailerKey = String(normalizedRetailer);
+          retailerCounts[retailerKey] = (retailerCounts[retailerKey] || 0) + 1;
+        });
+        
+        const mostCommonRetailer = Object.entries(retailerCounts)
+          .sort((a: any, b: any) => b[1] - a[1])[0]?.[0];
+        
+        if (mostCommonRetailer) {
+          console.log('🏪 Auto-selecting retailer from voice:', mostCommonRetailer);
+          setSelectedRetailer(mostCommonRetailer);
+        }
+      }
 
       // Check if all items have retailers or if a default retailer is selected
       const itemsWithoutRetailer = items.filter((item: any) => !item.retailer);
