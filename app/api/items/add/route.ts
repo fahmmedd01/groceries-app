@@ -33,33 +33,57 @@ export async function POST(request: NextRequest) {
 
     // If userId is provided, ensure user exists in database
     if (userId) {
-      const { data: existingUser } = await supabase
+      console.log('Checking if user exists:', userId);
+      const { data: existingUser, error: checkError } = await supabase
         .from('users')
         .select('id')
         .eq('id', userId)
         .maybeSingle();
 
+      if (checkError) {
+        console.error('Error checking user existence:', checkError);
+      }
+
       if (!existingUser) {
+        console.log('User does not exist, creating user:', { userId, userEmail, userName });
         // Create user in database (they signed in via localStorage)
-        const { error: userError } = await supabase
+        const { data: newUser, error: userError } = await supabase
           .from('users')
           .insert({
             id: userId,
             email: userEmail || `user-${userId}@local`,
             full_name: userName || 'User',
-          });
+          })
+          .select()
+          .single();
 
         if (userError) {
-          console.error('Error creating user:', userError);
+          console.error('❌ ERROR: Failed to create user:', userError);
           console.error('User creation error details:', {
             message: userError?.message,
             code: userError?.code,
             details: userError?.details,
             hint: userError?.hint,
           });
-          // Continue anyway - user might exist but we couldn't fetch it
+          
+          // If user creation fails, we CANNOT proceed with this userId
+          // Return error to client
+          return NextResponse.json(
+            { 
+              error: 'Failed to initialize user. Please try signing in again.', 
+              details: userError.message,
+              code: userError.code,
+            },
+            { status: 500 }
+          );
         }
+        
+        console.log('✅ User created successfully:', newUser);
+      } else {
+        console.log('✅ User already exists:', existingUser.id);
       }
+    } else {
+      console.log('ℹ️ No userId provided, creating guest list');
     }
 
     // Get or create active list for this user
@@ -84,6 +108,7 @@ export async function POST(request: NextRequest) {
     
     if (activeList) {
       // Use existing active list
+      console.log('✅ Found existing active list:', activeList.id);
       await supabase
         .from('grocery_lists')
         .update({ 
@@ -95,25 +120,42 @@ export async function POST(request: NextRequest) {
       listId = activeList.id;
     } else {
       // Create a new active grocery list
+      console.log('Creating new list for user:', userId || 'guest');
+      const listToInsert = {
+        user_id: userId || null,
+        title: `My Shopping List`,
+        is_active: true,
+        status: 'active',
+      };
+      console.log('List data to insert:', listToInsert);
+      
       const { data: newList, error: listError } = await supabase
         .from('grocery_lists')
-        .insert({
-          user_id: userId || null,
-          title: `My Shopping List`,
-          is_active: true,
-          status: 'active',
-        })
+        .insert(listToInsert)
         .select()
         .single();
 
       if (listError) {
-        console.error('Error creating list:', listError);
+        console.error('❌ ERROR: Failed to create list');
+        console.error('List creation error:', listError);
+        console.error('Error details:', {
+          message: listError?.message,
+          code: listError?.code,
+          details: listError?.details,
+          hint: listError?.hint,
+        });
         return NextResponse.json(
-          { error: 'Failed to create list', details: listError.message },
+          { 
+            error: 'Failed to create list', 
+            details: listError.message,
+            code: listError.code,
+            hint: listError.hint,
+          },
           { status: 500 }
         );
       }
       
+      console.log('✅ List created successfully:', newList.id);
       listData = newList;
       listId = newList.id;
     }
