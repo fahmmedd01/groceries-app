@@ -30,6 +30,15 @@ export async function POST(request: NextRequest) {
     const finalRetailer = retailer === 'other' && customRetailer ? customRetailer : retailer;
 
     const supabase = await createClient();
+    
+    // Verify Supabase connection
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.error('❌ Supabase environment variables not configured');
+      return NextResponse.json(
+        { error: 'Database connection not configured. Please contact support.' },
+        { status: 500 }
+      );
+    }
 
     // If userId is provided, ensure user exists in database
     if (userId) {
@@ -129,11 +138,25 @@ export async function POST(request: NextRequest) {
       };
       console.log('List data to insert:', listToInsert);
       
-      const { data: newList, error: listError } = await supabase
-        .from('grocery_lists')
-        .insert(listToInsert)
-        .select()
-        .single();
+      let newList, listError;
+      try {
+        const result = await supabase
+          .from('grocery_lists')
+          .insert(listToInsert)
+          .select()
+          .single();
+        newList = result.data;
+        listError = result.error;
+      } catch (fetchError: any) {
+        console.error('❌ Network error creating list:', fetchError);
+        return NextResponse.json(
+          { 
+            error: 'Database connection failed. Please check your internet connection and try again.',
+            details: fetchError.message,
+          },
+          { status: 500 }
+        );
+      }
 
       if (listError) {
         console.error('❌ ERROR: Failed to create list');

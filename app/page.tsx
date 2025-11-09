@@ -102,6 +102,12 @@ export default function HomePage() {
       if (!addResponse.ok) {
         const errorData = await addResponse.json().catch(() => ({}));
         console.error('Add items API error:', errorData);
+        
+        // If user is not signed in and list creation fails, prompt sign-in
+        if (!user && errorData.error?.includes('create list')) {
+          throw new Error('Please sign in to create your grocery list. Click "Sign In" at the top right.');
+        }
+        
         throw new Error(errorData.error || 'Failed to add items');
       }
 
