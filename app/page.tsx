@@ -24,7 +24,14 @@ import {
 
 export default function HomePage() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user, isLoading: userLoading } = useUser();
+  
+  // Debug: Log user state
+  useEffect(() => {
+    console.log('👤 Current user state:', user);
+    console.log('👤 User loading:', userLoading);
+  }, [user, userLoading]);
+  
   const [inputMode, setInputMode] = useState<'voice' | 'text'>('voice');
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -39,10 +46,23 @@ export default function HomePage() {
       selectedRetailer,
       customRetailer,
       user: user?.email,
+      userFull: user,
     });
 
     if (!inputText.trim()) {
       setError('Please add some grocery items first.');
+      return;
+    }
+
+    // Check if user context is still loading
+    if (userLoading) {
+      setError('Loading user data, please wait a moment and try again.');
+      return;
+    }
+
+    // If no user after loading, they need to sign in
+    if (!user) {
+      setError('Please sign in to create your grocery list. Click "Sign In" at the top right.');
       return;
     }
 
@@ -330,7 +350,7 @@ export default function HomePage() {
         {/* Add Items Button */}
         <Button
           onClick={handleAddItems}
-          disabled={isProcessing || !inputText.trim()}
+          disabled={isProcessing || !inputText.trim() || userLoading}
           className="w-full gap-3"
           size="lg"
         >
