@@ -17,9 +17,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!retailer) {
+    // Check if retailer is needed (when items don't have their own retailers)
+    const itemsWithoutRetailer = items.filter((item: GroceryItem) => !item.retailer);
+    if (itemsWithoutRetailer.length > 0 && !retailer) {
       return NextResponse.json(
-        { error: 'Retailer must be specified' },
+        { error: 'Retailer must be specified for items without inline retailer assignments' },
         { status: 400 }
       );
     }
@@ -138,10 +140,22 @@ export async function POST(request: NextRequest) {
         console.log(`Item "${item.name}": AI extracted retailer="${item.retailer}", normalized to="${normalizedItemRetailer}"`);
       }
       
-      // Use item's specific retailer if provided and valid, otherwise use selected retailer from dropdown
-      let itemRetailer = normalizedItemRetailer && isKnownRetailer(normalizedItemRetailer)
-        ? normalizedItemRetailer
-        : (item.retailer ? item.retailer : finalRetailer); // Keep original if not in known list (custom retailer)
+      // Determine final retailer for this item:
+      // 1. Use normalized retailer if it's a known retailer
+      // 2. Use original AI retailer if it's not known (could be custom)
+      // 3. Fallback to dropdown selection
+      let itemRetailer: string;
+      if (normalizedItemRetailer && isKnownRetailer(normalizedItemRetailer)) {
+        itemRetailer = normalizedItemRetailer;
+      } else if (item.retailer) {
+        itemRetailer = item.retailer; // Keep original for custom retailers
+      } else if (finalRetailer) {
+        itemRetailer = finalRetailer; // Use dropdown selection
+      } else {
+        // This shouldn't happen due to validation above, but handle it gracefully
+        itemRetailer = 'other';
+        console.warn(`No retailer found for item "${item.name}", defaulting to "other"`);
+      }
       
       console.log(`Final retailer for "${item.name}": "${itemRetailer}"`);
       

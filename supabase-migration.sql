@@ -240,3 +240,5 @@ BEGIN
   RAISE NOTICE 'You can now use the updated app.';
 END $$;
 
+
+

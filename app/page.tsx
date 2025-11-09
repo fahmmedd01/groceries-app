@@ -46,16 +46,6 @@ export default function HomePage() {
       return;
     }
 
-    if (!selectedRetailer) {
-      setError('Please select a retailer.');
-      return;
-    }
-
-    if (selectedRetailer === 'other' && !customRetailer.trim()) {
-      setError('Please enter a retailer name.');
-      return;
-    }
-
     setIsProcessing(true);
     setError(null);
     setSuccess(null);
@@ -76,6 +66,24 @@ export default function HomePage() {
 
       const { items } = await parseResponse.json();
       console.log('Parsed items from AI:', items);
+
+      // Check if all items have retailers or if a default retailer is selected
+      const itemsWithoutRetailer = items.filter((item: any) => !item.retailer);
+      const hasDefaultRetailer = selectedRetailer && selectedRetailer.trim() !== '';
+      
+      if (itemsWithoutRetailer.length > 0 && !hasDefaultRetailer) {
+        setError(
+          `Some items don't have a retailer specified. Please select a default retailer or specify retailers in your input (e.g., "eggs from walmart").`
+        );
+        setIsProcessing(false);
+        return;
+      }
+
+      if (selectedRetailer === 'other' && !customRetailer.trim()) {
+        setError('Please enter a custom retailer name.');
+        setIsProcessing(false);
+        return;
+      }
 
       // Add items to active list
       const addResponse = await fetch('/api/items/add', {
@@ -216,7 +224,7 @@ export default function HomePage() {
           {/* Retailer Selection */}
           <div className="mt-6">
             <label className="block text-sm font-medium mb-3">
-              Select Retailer
+              Select Retailer <span className="text-muted-foreground font-normal">(optional if specified in voice)</span>
             </label>
             <Select value={selectedRetailer} onValueChange={setSelectedRetailer}>
               <SelectTrigger className="w-full">
@@ -316,7 +324,7 @@ export default function HomePage() {
         {/* Add Items Button */}
         <Button
           onClick={handleAddItems}
-          disabled={isProcessing || !inputText.trim() || !selectedRetailer}
+          disabled={isProcessing || !inputText.trim()}
           className="w-full gap-3"
           size="lg"
         >

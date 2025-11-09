@@ -171,3 +171,5 @@ CREATE TABLE IF NOT EXISTS public.stores (
 
 Run the **full schema file** for complete setup with RLS policies!
 
+
+

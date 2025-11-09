@@ -20,3 +20,5 @@ BEGIN
   RAISE NOTICE 'Users table is now independent and ready for localStorage auth.';
 END $$;
 
+
+
